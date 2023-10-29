@@ -1,4 +1,5 @@
 *.o
 *.x
 /mira
+/fdate
 miralib/menudriver
