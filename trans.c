@@ -813,236 +813,254 @@ void decltype(word tf, word class, word info, word here)  /* declare a user defi
     id_type(tf)=type_t;
 }
 
-void declconstr(x,n,t)  /* declare x to be constructor number n of type t */
-word x,n,t;   /* x must be an identifier */
-{ id_val(x)=constructor(n,x);
-  if(n>>16)
-    { syntax("algebraic type has too many constructors\n"); return; }
-  if(id_type(x)!=undef_t){ errs=id_who(x); respec_error(x); return; }
-  else addtoenv(x);
-  id_type(x) = t;
+void declconstr(word x, word n, word t)  /* declare x to be constructor number n of type t */
+  /* x must be an identifier */
+{
+    id_val(x)=constructor(n,x);
+    if (n>>16)  {
+        syntax("algebraic type has too many constructors\n"); return;
+        
+    }
+    if (id_type(x)!=undef_t) {
+        errs=id_who(x); respec_error(x); return;
+    }
+    else addtoenv(x);
+    id_type(x) = t;
 } /* the value of a constructor x is constructor(constr_tag,x)
      where constr_tag is a small natural number */
 
-word block(defs,e,keep) /* semantics of "where" - performs dependency analysis */
+word block(word defs, word e, word keep) /* semantics of "where" - performs dependency analysis */
 /* defs has form list(defn(pat,typ,val)), e is body of block */
 /* if `keep' hold together as single letrec */
-word defs,e,keep;
-{ word ids=NIL,deftoids=NIL,g=NIL,d;
-  extern word SYNERR,detrop;
-  /* return(letrec(defs,e)); /* release one semantics was just this */
-  if(SYNERR)return(NIL);  /* analysis falls over on empty patterns */
-  for(d=defs;d!=NIL;d=tl[d])  /* first collect all ids defined in block */
-     { word x = get_ids(dlhs(hd[d]));
-       ids=UNION(ids,x);
-       deftoids=cons(cons(hd[d],x),deftoids);
-     }
-  defs=sort(defs);
-  for(d=defs;d!=NIL;d=tl[d]) /* now build dependency relation g */
-     { word x=intersection(deps(dval(hd[d])),ids),y=NIL;
-       for(;x!=NIL;x=tl[x])  /* replace each id by corresponding def */
-	  y=add1(invgetrel(deftoids,hd[x]),y);
-       g=cons(cons(hd[d],add1(hd[d],y)),g);
-       /* treat all defs as recursive for now */
-     }
-  g=reverse(g); /* keep in address order of first components */
-/* g is list(cons(def,defs)) 
-   where defs are all on which def immediately depends, plus self */
-  g = tclos(g);  /* now g is list(cons(def,ultdefs)) */
-  { /* check for unused definitions */
-    word x=intersection(deps(e),ids),y=NIL,*g1= &g;
-    for(;x!=NIL;x=tl[x])
-       { word d=invgetrel(deftoids,hd[x]);
-         if(!member(y,d))y=UNION(y,getrel(g,d)); }
-    defs=setdiff(defs,y);  /* these are de trop */
-    if(defs!=NIL)detrop=append1(detrop,defs);
-    if(keep)             /* if local polymorphism not required */
-    return(letrec(y,e)); /* analysis was solely to find unwanted defs */
-    /* remove redundant entries from g */
-    /* no, leave in for typecheck - could remove afterwards
-    while(*g1!=NIL&&defs!=NIL)
+{
+    word ids=NIL,deftoids=NIL,g=NIL,d;
+    extern word SYNERR,detrop;
+    /* return(letrec(defs,e)); /* release one semantics was just this */
+    if(SYNERR)return(NIL);  /* analysis falls over on empty patterns */
+    for(d=defs;d!=NIL;d=tl[d])  /* first collect all ids defined in block */
+    { word x = get_ids(dlhs(hd[d]));
+        ids=UNION(ids,x);
+        deftoids=cons(cons(hd[d],x),deftoids);
+    }
+    defs=sort(defs);
+    for(d=defs;d!=NIL;d=tl[d]) { /* now build dependency relation g */
+        word x=intersection(deps(dval(hd[d])),ids),y=NIL;
+        for(;x!=NIL;x=tl[x])  /* replace each id by corresponding def */
+        y=add1(invgetrel(deftoids,hd[x]),y);
+        g=cons(cons(hd[d],add1(hd[d],y)),g);
+        /* treat all defs as recursive for now */
+    }
+    g=reverse(g); /* keep in address order of first components */
+    /* g is list(cons(def,defs))
+     where defs are all on which def immediately depends, plus self */
+    g = tclos(g);  /* now g is list(cons(def,ultdefs)) */
+    { /* check for unused definitions */
+        word x=intersection(deps(e),ids),y=NIL,*g1= &g;
+        for(;x!=NIL;x=tl[x])
+        { word d=invgetrel(deftoids,hd[x]);
+            if(!member(y,d))y=UNION(y,getrel(g,d)); }
+        defs=setdiff(defs,y);  /* these are de trop */
+        if(defs!=NIL)detrop=append1(detrop,defs);
+        if(keep)             /* if local polymorphism not required */
+            return(letrec(y,e)); /* analysis was solely to find unwanted defs */
+        /* remove redundant entries from g */
+        /* no, leave in for typecheck - could remove afterwards
+         while(*g1!=NIL&&defs!=NIL)
          if(hd[hd[*g1]]==hd[defs])*g1=tl[*g1]; else
          if(hd[hd[*g1]]<hd[defs])g1= &tl[*g1];
          else defs=tl[defs]; */
-  }
-  g = msc(g);    /* g is list(defgroup,ultdefs) */
-  g = tsort(g);  /* g is list(defgroup) in dependency order */
-  g = reverse(g); /* reconstruct block inside-first */
-  while(g!=NIL)
-       { if(tl[hd[g]]==NIL &&
-	    intersection(get_ids(dlhs(hd[hd[g]])),deps(dval(hd[hd[g]])))==NIL
-	   )e=let(hd[hd[g]],e);  /* single non-recursive def */
-         else e=letrec(hd[g],e);
-	 g=tl[g]; }
-  return(e);
+    }
+    g = msc(g);    /* g is list(defgroup,ultdefs) */
+    g = tsort(g);  /* g is list(defgroup) in dependency order */
+    g = reverse(g); /* reconstruct block inside-first */
+    while(g!=NIL) {
+        if(tl[hd[g]]==NIL &&
+           intersection(get_ids(dlhs(hd[hd[g]])),deps(dval(hd[hd[g]])))==NIL) e=let(hd[hd[g]],e);  /* single non-recursive def */
+        else e=letrec(hd[g],e);
+        g=tl[g];
+    }
+    return(e);
 }
 /* Implementation note:
-   tsort will fall over if there is a non-list strong component because it
-   was originally written on assumption that relation is over identifiers.
-   Whence need to pretend all defs recursive until after tsort.
-   Could do better - some defs may be subsidiary to others */
+ tsort will fall over if there is a non-list strong component because it
+ was originally written on assumption that relation is over identifiers.
+ Whence need to pretend all defs recursive until after tsort.
+ Could do better - some defs may be subsidiary to others */
 
-word tclos(r) /* fast transitive closure - destructive in r */
-word r;   /* r is of form list(cons(x,xs)) */
-{ word r1;
-  for(r1=r;r1!=NIL;r1=tl[r1])
-     { word x= less1(tl[hd[r1]],hd[hd[r1]]);
-	     /* invariant x intersect tl[hd[r1]] = NIL */
-       while(x!=NIL)
-	    { x=imageless(r,x,tl[hd[r1]]);
-	      tl[hd[r1]]=UNION(tl[hd[r1]],x); }
-     }
-  return(r);
+word tclos(word r) /* fast transitive closure - destructive in r */
+/* r is of form list(cons(x,xs)) */
+{
+    word r1;
+    for(r1=r;r1!=NIL;r1=tl[r1]) {
+        word x= less1(tl[hd[r1]],hd[hd[r1]]);
+        /* invariant x intersect tl[hd[r1]] = NIL */
+        while(x!=NIL)  {
+            x=imageless(r,x,tl[hd[r1]]);
+            tl[hd[r1]]=UNION(tl[hd[r1]],x);
+        }
+    }
+    return(r);
 }
 
-word getrel(r,x) /* r is list(cons(x,xs)) - return appropriate xs, else NIL */
-word r,x;
-{ while(r!=NIL&&hd[hd[r]]!=x)r=tl[r];
-  return(r==NIL?NIL:tl[hd[r]]);
+static word getrel(word r, word x) /* r is list(cons(x,xs)) - return appropriate xs, else NIL */
+{
+    while(r!=NIL&&hd[hd[r]]!=x)r=tl[r];
+    return(r==NIL?NIL:tl[hd[r]]);
 }
 
-word invgetrel(r,x) /* return first x1 such that `x1 r x' error if none found */
-word r,x;
-{ while(r!=NIL&&!member(tl[hd[r]],x))r=tl[r];
-  if(r==NIL)fprintf(stderr,"impossible event in invgetrel\n"),exit(1);
-  return(hd[hd[r]]);
+static word invgetrel(word r, word x) /* return first x1 such that `x1 r x' error if none found */
+{
+    while (r!=NIL&&!member(tl[hd[r]],x)) r=tl[r];
+    if (r==NIL) fprintf(stderr,"impossible event in invgetrel\n"),exit(1);
+    return(hd[hd[r]]);
 }
 
 
-word imageless(r,y,z) /* image of set y in reln r, less set z */
-word r,y,z;
-{ word i=NIL;
-  while(r!=NIL&&y!=NIL)
-       if(hd[hd[r]]==hd[y])
-         i=UNION(i,less(tl[hd[r]],z)),r=tl[r],y=tl[y]; else
-       if(hd[hd[r]]<hd[y])r=tl[r];
-       else y=tl[y];
-  return(i);
+static word imageless(word r, word y, word z) /* image of set y in reln r, less set z */
+{
+    word i=NIL;
+    while(r!=NIL&&y!=NIL)
+        if(hd[hd[r]]==hd[y])
+            i=UNION(i,less(tl[hd[r]],z)),r=tl[r],y=tl[y]; else
+                if(hd[hd[r]]<hd[y])r=tl[r];
+                else y=tl[y];
+    return(i);
 }
 
-word less(x,y)  /* non-destructive set difference x-y */
-word x,y;
-{ word r=NIL;
-  while(x!=NIL&&y!=NIL)
-       if(hd[x]==hd[y])x=tl[x],y=tl[y]; else
-       if(hd[x]<hd[y])r=cons(hd[x],r),x=tl[x];
-       else y=tl[y];
-  return(shunt(r,x));
+static word less(word x, word y)  /* non-destructive set difference x-y */
+{
+    word r=NIL;
+    while(x!=NIL&&y!=NIL)
+        if(hd[x]==hd[y])x=tl[x],y=tl[y];
+        else
+            if(hd[x]<hd[y])r=cons(hd[x],r),x=tl[x];
+            else y=tl[y];
+    return(shunt(r,x));
 }
 
-word less1(x,a)  /* non-destructive set difference x- {a} */
-word x,a;
-{ word r=NIL;
-  while(x!=NIL&&hd[x]!=a)r=cons(hd[x],r),x=tl[x];
-  return(shunt(r,x==NIL?NIL:tl[x]));
+static word less1(word x, word a)  /* non-destructive set difference x- {a} */
+{
+    word r=NIL;
+    while (x!=NIL&&hd[x]!=a) r=cons(hd[x],r),x=tl[x];
+    return(shunt(r,x==NIL?NIL:tl[x]));
 }
 
-word sort(x) /* into address order */
-word x;
-{ word a=NIL,b=NIL,hold=NIL;
-  if(x==NIL||tl[x]==NIL)return(x);
-  while(x!=NIL) /* split x */
-       { hold=a,a=cons(hd[x],b),b=hold;
-	 x=tl[x]; }
-  a=sort(a),b=sort(b);
-  /* now merge two halves back together */
-  while(a!=NIL&&b!=NIL)
-  if(hd[a]<hd[b])x=cons(hd[a],x),a=tl[a];
-  else x=cons(hd[b],x),b=tl[b];
-  if(a==NIL)a=b;
-  while(a!=NIL)x=cons(hd[a],x),a=tl[a];
-  return(reverse(x));
+static word sort(word x) /* into address order */
+{
+    word a=NIL,b=NIL,hold=NIL;
+    if(x==NIL||tl[x]==NIL)return(x);
+    while(x!=NIL) /* split x */
+    { hold=a,a=cons(hd[x],b),b=hold;
+        x=tl[x]; }
+    a=sort(a),b=sort(b);
+    /* now merge two halves back together */
+    while(a!=NIL&&b!=NIL)
+        if(hd[a]<hd[b])x=cons(hd[a],x),a=tl[a];
+        else x=cons(hd[b],x),b=tl[b];
+    if(a==NIL)a=b;
+    while(a!=NIL)x=cons(hd[a],x),a=tl[a];
+    return(reverse(x));
 }
 
-word sortrel(x) /* sort relation into address order of first components */
-word x;  /* x is a list of cons(y,ys) */
-{ word a=NIL,b=NIL,hold=NIL;
-  if(x==NIL||tl[x]==NIL)return(x);
-  while(x!=NIL) /* split x */
-       { hold=a,a=cons(hd[x],b),b=hold;
-	 x=tl[x]; }
-  a=sortrel(a),b=sortrel(b);
-  /* now merge two halves back together */
-  while(a!=NIL&&b!=NIL)
-  if(hd[hd[a]]<hd[hd[b]])x=cons(hd[a],x),a=tl[a];
-  else x=cons(hd[b],x),b=tl[b];
-  if(a==NIL)a=b;
-  while(a!=NIL)x=cons(hd[a],x),a=tl[a];
-  return(reverse(x));
+word sortrel(word x) /* sort relation into address order of first components */
+  /* x is a list of cons(y,ys) */
+{
+    word a=NIL,b=NIL,hold=NIL;
+    if(x==NIL||tl[x]==NIL)return(x);
+    while(x!=NIL) { /* split x */
+        hold=a,a=cons(hd[x],b),b=hold;
+        x=tl[x];
+    }
+    a=sortrel(a),b=sortrel(b);
+    /* now merge two halves back together */
+    while(a!=NIL&&b!=NIL)
+        if(hd[hd[a]]<hd[hd[b]])x=cons(hd[a],x),a=tl[a];
+        else x=cons(hd[b],x),b=tl[b];
+    if(a==NIL)a=b;
+    while(a!=NIL)x=cons(hd[a],x),a=tl[a];
+    return(reverse(x));
 }
 
-void specify(x,t,h) /* semantics of a "::" statement */
-word x,t,h;  /* N.B. t not yet in reduced form */
-{ extern word showwhat;
-  if(tag[x]!=ID&&t!=type_t){ errs=h;
-			     syntax("incorrect use of ::\n");
-                             return; }
-  if(t==type_t)
-    { word a=0;
-      while(tag[x]==AP)a++,x=hd[x];
-      if(!(id_val(x)==UNDEF&&id_type(x)==undef_t))
-	{ errs=h; nameclash(x); return; }
-      id_type(x)=type_t; 
-      if(id_who(x)==NIL)id_who(x)=h; /* premise always true, see above */
+void specify(word x, word t, word h) /* semantics of a "::" statement */
+ /* N.B. t not yet in reduced form */
+{
+    extern word showwhat;
+    if(tag[x]!=ID&&t!=type_t){
+        errs=h;
+        syntax("incorrect use of ::\n");
+        return;
+        
+    }
+    if(t==type_t)  {
+        word a=0;
+        while(tag[x]==AP)a++,x=hd[x];
+        if(!(id_val(x)==UNDEF&&id_type(x)==undef_t)) {
+            errs=h; nameclash(x); return;
+            
+        }
+        id_type(x)=type_t;
+        if (id_who(x)==NIL) id_who(x)=h; /* premise always true, see above */
         /* if specified and defined, locate by definition */
-      id_val(x)=make_typ(a,showwhat,placeholder_t,NIL);/* placeholder type */
-      addtoenv(x);
-      newtyps=add1(x,newtyps);
-      return; }
-  if(id_type(x)!=undef_t){ errs=h; respec_error(x); return; }
-  id_type(x)=t;
-  if(id_who(x)==NIL)id_who(x)=h; /* as above */
-  else speclocs=cons(cons(x,h),speclocs);
-  if(id_val(x)==UNDEF)addtoenv(x);
+        id_val(x)=make_typ(a,showwhat,placeholder_t,NIL);/* placeholder type */
+        addtoenv(x);
+        newtyps=add1(x,newtyps);
+        return;
+    }
+    if (id_type(x)!=undef_t) {
+        errs=h; respec_error(x); return;
+    }
+    id_type(x)=t;
+    if(id_who(x)==NIL)id_who(x)=h; /* as above */
+    else speclocs=cons(cons(x,h),speclocs);
+    if(id_val(x)==UNDEF)addtoenv(x);
 }
 
-void respec_error(x) /* only one type spec per name allowed - IS THIS RIGHT? */
-word x;
-{ extern word primenv;
-  if(echoing)putchar('\n');
-  printf("syntax error: type of \"%s\" already declared%s\n",get_id(x),
-	 member(primenv,x)?" (in standard environment)":"");
-  acterror();
+static void respec_error(word x) /* only one type spec per name allowed - IS THIS RIGHT? */
+{
+    extern word primenv;
+    if(echoing)putchar('\n');
+    printf("syntax error: type of \"%s\" already declared%s\n",get_id(x),
+           member(primenv,x)?" (in standard environment)":"");
+    acterror();
 }
 
-void nameclash(x) /* only one top level binding per name allowed */
-word x;
-{ extern word primenv;
-  if(echoing)putchar('\n');
-  printf("syntax error: nameclash, \"%s\" already defined%s\n",get_id(x),
-	 member(primenv,x)?" (in standard environment)":"");
-  acterror();
+static void nameclash(word x) /* only one top level binding per name allowed */
+{
+    extern word primenv;
+    if(echoing)putchar('\n');
+    printf("syntax error: nameclash, \"%s\" already defined%s\n",get_id(x),
+           member(primenv,x)?" (in standard environment)":"");
+    acterror();
 }
 
-void nclashcheck(n,dd,hr) /* is n already bound in list of definitions dd */
-word n,dd,hr;
-{ while(dd!=NIL&&!nclchk(n,dlhs(hd[dd]),hr))dd=tl[dd];
+void nclashcheck(word n, word dd, word hr) /* is n already bound in list of definitions dd */
+{
+    while (dd!=NIL&&!nclchk(n,dlhs(hd[dd]),hr)) dd=tl[dd];
 }
 
-int nclchk(n,p,hr)  /* is n already bound in pattern p */
-word n,p,hr;
-{ if(hd[p]==CONST)return(0);
-  if(tag[p]==ID)
-    { if(n!=p)return(0);
-      if(echoing)putchar('\n');
-      errs=hr,
-      printf(
-"syntax error: conflicting definitions of \"%s\" in where clause\n",
-      get_id(n)),
-      acterror();
-      return(1); }
-  if(tag[p]==AP&&hd[p]==PLUS) /* hd of n+k pattern */
-    return(0);
-  return(nclchk(n,hd[p],hr)||nclchk(n,tl[p],hr));
+static int nclchk(word n, word p, word hr)  /* is n already bound in pattern p */
+{
+    if(hd[p]==CONST)return(0);
+    if(tag[p]==ID) {
+        if(n!=p)return(0);
+        if(echoing)putchar('\n');
+        errs=hr,
+        printf("syntax error: conflicting definitions of \"%s\" in where clause\n",
+               get_id(n)),
+        acterror();
+        return(1); }
+    if(tag[p]==AP&&hd[p]==PLUS) /* hd of n+k pattern */
+        return(0);
+    return(nclchk(n,hd[p],hr)||nclchk(n,tl[p],hr));
 }
 
-word transtypeid(x)  /* recognises literal type constants - see rules.y */
-word x;
-{ char *n=get_id(x);
-  return(strcmp(n,"bool")==0?bool_t:
-         strcmp(n,"num")==0?num_t:
-         strcmp(n,"char")==0?char_t:
-         x);
+word transtypeid(word x)  /* recognises literal type constants - see rules.y */
+{
+    char *n=get_id(x);
+    return(strcmp(n,"bool")==0 ? bool_t :
+           strcmp(n,"num")==0 ? num_t   :
+           strcmp(n,"char")==0 ? char_t :
+           x);
 }
 
 /* end of MIRANDA TRANS */
