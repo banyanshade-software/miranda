@@ -26,9 +26,11 @@ char* d2s(double);
 word d2s_buffered(double, char*);
 #endif
 
-double fa,fb;
-long long cycles=0;
-word stdinuse=0;
+#define DEBUG 1
+
+static double fa,fb;
+static long long cycles=0;
+static word stdinuse=0;
 /* int lasthead=0; /* DEBUG */
 
 static void apfile(word);

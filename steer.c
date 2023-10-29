@@ -109,7 +109,8 @@ char *promptstr="Miranda ";
 char *obsuffix="x";
 FILE *s_in=NULL;
 word commandmode=0; /* true only when reading command-level expressions */
-int atobject=0,atgc=0,atcount=0,debug=0;
+int atobject=0,atgc=0,atcount=0;
+int debug=0;
 word magic=0; /* set to 1 means script will start with UNIX magic string */
 word making=0; /* set only for mira -make */
 word mkexports=0; /* set only for mira -exports */
