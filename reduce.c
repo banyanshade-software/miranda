@@ -2141,16 +2141,19 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
             RESTORE(e);
             GETARG(arg1);
             UPLEFT;
-            if(tag[lastarg]==DOUBLE)
-            { fa=force_dbl(arg1);
-                if(fa<0.0)errno=EDOM,math_error("^");
-                fb=get_dbl(lastarg); }else
-                    if(tag[arg1]==DOUBLE)
-                        fa=get_dbl(arg1),fb=bigtodbl(lastarg); else
-                            if(neg(lastarg))
-                                fa=bigtodbl(arg1),fb=bigtodbl(lastarg);
-                            else { simpl(bigpow(arg1,lastarg));
-                                goto DONE; }
+            if (tag[lastarg]==DOUBLE) {
+                fa=force_dbl(arg1);
+                if(fa<0.0) errno=EDOM,math_error("^");
+                fb=get_dbl(lastarg);
+                
+            } else if(tag[arg1]==DOUBLE)
+                fa=get_dbl(arg1),fb=bigtodbl(lastarg);
+            else if(neg(lastarg))
+                fa=bigtodbl(arg1),fb=bigtodbl(lastarg);
+            else {
+                simpl(bigpow(arg1,lastarg));
+                goto DONE;
+            }
             errno=0; /* to clear */
             setdbl(e,pow(fa,fb));
             if(errno)math_error("power");
@@ -2194,12 +2197,12 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
             RESTORE(e);
             GETARG(arg1);
             UPLEFT;
-            if(arg1==NIL)simpl(lastarg); else
-                if(lastarg==NIL)simpl(arg1); else
-                    if(compare(hd[arg1]=reduce(hd[arg1]),
-                               hd[lastarg]=reduce(hd[lastarg]))<=0)  /* ### */
-                        setcell(CONS,hd[arg1],ap2(MERGE,tl[arg1],lastarg));
-                    else setcell(CONS,hd[lastarg],ap2(MERGE,tl[lastarg],arg1));
+            if(arg1==NIL)simpl(lastarg);
+            else if(lastarg==NIL)simpl(arg1);
+            else  if(compare(hd[arg1]=reduce(hd[arg1]),
+                             hd[lastarg]=reduce(hd[lastarg]))<=0)  /* ### */
+                setcell(CONS,hd[arg1],ap2(MERGE,tl[arg1],lastarg));
+            else setcell(CONS,hd[lastarg],ap2(MERGE,tl[lastarg],arg1));
             goto DONE;
             
         case READY(STEPUNTIL):  /* STEPUNTIL i a b => GENSEQ (i,b) a */
@@ -2230,17 +2233,24 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
                 if(suppressed(arg1))
                     e=tl[e]=str_conv("<unprintable>");
                 else e=tl[e]=str_conv(constr_name(arg1));
-                goto DONE; }
+                goto DONE;
+            }
             hold=arg2?cons(')',NIL):NIL;
             while(tag[arg1]!=CONSTRUCTOR)
                 hold=cons(' ',ap2(APPEND,ap(tl[arg1],tl[arg3]),hold)),
                 arg1=hd[arg1],arg3=hd[arg3];
-            if(suppressed(arg1))
-            { hd[e]=I; e=tl[e]=str_conv("<unprintable>"); goto DONE; }
+            if (suppressed(arg1)) {
+                hd[e]=I; e=tl[e]=str_conv("<unprintable>");
+                goto DONE;
+            }
             hold=ap2(APPEND,str_conv(constr_name(arg1)),hold);
-            if(arg2)
-            { setcell(CONS,'(',hold); goto DONE; }
-            else { hd[e]=I; e=tl[e]=hold; goto NEXTREDEX; }
+            if(arg2) {
+                setcell(CONS,'(',hold);
+                goto DONE;
+            } else {
+                hd[e]=I; e=tl[e]=hold;
+                goto NEXTREDEX;
+            }
             
         default: fprintf(stderr,"\nimpossible event in reduce ("),
             out(stderr,e),fprintf(stderr,")\n"),
