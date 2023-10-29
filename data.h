@@ -344,7 +344,12 @@ int yyparse();
 
 extern int yychar; /* defined in y.tab.c */
 
+
 /* #include "allexterns" /* check for type consistency */
+
+extern FILE *s_out; /* reduce.c */
+extern word outfilq;
+extern word waiting;
 
 /* end of MISCELLANEOUS DECLARATIONS */
 

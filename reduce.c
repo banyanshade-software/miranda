@@ -61,7 +61,7 @@ static void int_error(char *);
 /* ### */          /* functions marked ### contain possibly recursive calls
 		      to reduce - fix later */
 
-int compare(word a, word b)  /* returns -1, 0, 1 as a is less than equal to or greater than
+static int compare(word a, word b)  /* returns -1, 0, 1 as a is less than equal to or greater than
                      b in the ordering imposed on all data types by the miranda
                      language -- a and b already reduced */
                   /* used by MATCH, EQ, NEQ, GR, GRE */
@@ -105,7 +105,7 @@ L:
     return(0);
 }
 
-void force(word x) /* ensures that x is evaluated "all the way" */
+static void force(word x) /* ensures that x is evaluated "all the way" */
                    /* x is already reduced */ /* ### */
 {
     word h;
@@ -234,7 +234,7 @@ L:e= reduce(e);
 }
 
 /* ### */
-void print(word e) /* evaluate list of chars and send to s_out */
+static void print(word e) /* evaluate list of chars and send to s_out */
 {
     e= reduce(e);
     while(tag[e]==CONS && is_char(hd[e]=reduce(hd[e]))) {
@@ -250,7 +250,7 @@ void print(word e) /* evaluate list of chars and send to s_out */
     exit(1);
 }
 
-word outfilq=NIL; /* list of opened-for-output files */
+word outfilq = NIL; /* list of opened-for-output files */
 /* note that this will be automatically reset to  NIL  and  all  files  on  it
 closed at end of expression evaluation, because of the fork-exit structure */
 
@@ -333,7 +333,7 @@ word waiting=NIL;
 #define getarg(a) upleft; a=tl[e]
 #define UPRIGHT mknormal(s), hold=tl[s], tl[s]=e, e=hd[s], hd[s]=hold
 #define lastarg tl[e]
-word reds=0;
+static word reds=0;
 
 /* IMPORTANT WARNING - the macro's
      `downright;' `upleft;' `getarg;' 
@@ -343,7 +343,8 @@ word reds=0;
 #define simpl(r) hd[e]=I, e=tl[e]=r
 
 #ifdef DEBUG
-word maxrdepth=0,rdepth=0;
+static word maxrdepth=0;
+static word rdepth=0;
 #endif
 
 #define fails(x)   (x==NIL)
@@ -646,7 +647,8 @@ OPDECODE:
                                  (FLATMAP was formerly called MAP1) */
             getarg(arg1);
             getarg(arg2);
-        L1:arg2=reduce(arg2);    /* ### */
+        L1:
+            arg2=reduce(arg2);    /* ### */
             if(arg2==NIL)
             { hd[e]=I;
                 e=tl[e]=NIL;
@@ -681,11 +683,13 @@ OPDECODE:
             
         case LENGTH:   /*  takes length of a list */
             upleft;
-        { long long n=0; /* problem - may be followed by gc */
+            {
+            long long n=0; /* problem - may be followed by gc */
             /* cannot make static because of ### below */
             while((lastarg=reduce(lastarg))!=NIL)  /* ### */
                 lastarg=tl[lastarg],n++;
-            simpl(sto_int(n)); }
+            simpl(sto_int(n));
+            }
             goto DONE;
             
         case DROP:
@@ -693,10 +697,13 @@ OPDECODE:
             upleft;
             arg1=tl[hd[e]]=reduce(tl[hd[e]]);  /* ### */
             if(tag[arg1]!=INT)int_error("drop");
-        { long long n=get_int(arg1);
+            {
+            long long n=get_int(arg1);
             while(n-- >0)
-                if((lastarg=reduce(lastarg))==NIL)  /* ### */
-                { simpl(NIL); goto DONE; }
+                if((lastarg=reduce(lastarg))==NIL) { /* ### */
+                    simpl(NIL);
+                    goto DONE;
+                }
             else lastarg=tl[lastarg]; }
             simpl(lastarg);
             goto NEXTREDEX;
@@ -2393,7 +2400,7 @@ static void stdin_error(int c)
 #else
 /* this is ANSII C, POSIX */
 #include <time.h>
-clock_t start, end;
+static clock_t start, end;
 #endif
 
 void initclock()
