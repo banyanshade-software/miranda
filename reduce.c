@@ -26,7 +26,7 @@ char* d2s(double);
 word d2s_buffered(double, char*);
 #endif
 
-#define DEBUG 1
+//#define DEBUG 1
 
 static double fa,fb;
 static long long cycles=0;
