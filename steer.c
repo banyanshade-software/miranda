@@ -1292,45 +1292,48 @@ static void allnamescom(void)
 #define tolerance  3
              /* max number of extra spaces we are willing to insert */
 
-void namescom(l)  /* l is an element of `files' */
-word l;
-{ word n=fil_defs(l),col=0,undefs=NIL,wp=0;
-  word scrwd = twidth();
-  if(!sorted&&n!=primenv) /* primenv already sorted */
-    fil_defs(l)=n=alfasort(n); /* also removes pnames */
-  if(n==NIL)return; /* skip empty files */
-  if(get_fil(l))filequote(get_fil(l));
-  else printf("primitive:");
-  printf("\n");
-  while(n!=NIL)
-    { if(id_type(hd[n])==wrong_t||id_val(hd[n])!=UNDEF)
-	{ word w=strlen(get_id(hd[n]));
-	  if(col+w<scrwd)col += (col!=0); else
-	  if(wp&&col+w>=scrwd)
-	    { word i,r,j;
-	      if(wp>1)i=(scrwd-col)/(wp-1),r=(scrwd-col)%(wp-1);
-	      if(i+(r>0)>tolerance)i=r=0;
-	      if(leftist)
-	        for(col=0;col<wp;)
-                   { printf("%s",get_id(words[col]));
-		     if(++col<wp)
-		       spaces(1+i+(r-- >0)); }
-	      else
-	        for(r=wp-1-r,col=0;col<wp;)
-                   { printf("%s",get_id(words[col]));
-		     if(++col<wp)
-		       spaces(1+i+(r-- <=0)); }
-	      leftist=!leftist,wp=0,col=0,putchar('\n'); }
-	  col+=w;
-	  words[wp++]=hd[n]; }
-      else undefs=cons(hd[n],undefs); /* undefined but have good types */
-      n = tl[n]; }
-  if(wp)
-    for(col=0;col<wp;)
-       printf("%s",get_id(words[col])),putc(++col==wp?'\n':' ',stdout);
-  if(undefs==NIL)return;
-  undefs=reverse(undefs);
-  printlist("SPECIFIED BUT NOT DEFINED: ",undefs);
+static void namescom(word l)  /* l is an element of `files' */
+{
+    word n=fil_defs(l),col=0,undefs=NIL,wp=0;
+    word scrwd = twidth();
+    if(!sorted&&n!=primenv) /* primenv already sorted */
+        fil_defs(l)=n=alfasort(n); /* also removes pnames */
+    if(n==NIL)return; /* skip empty files */
+    if(get_fil(l))filequote(get_fil(l));
+    else printf("primitive:");
+    printf("\n");
+    while(n!=NIL)  {
+        if(id_type(hd[n])==wrong_t||id_val(hd[n])!=UNDEF) {
+            word w=strlen(get_id(hd[n]));
+            if(col+w<scrwd)col += (col!=0);
+            else if(wp&&col+w>=scrwd)  { word i,r,j;
+                if(wp>1)i=(scrwd-col)/(wp-1),r=(scrwd-col)%(wp-1);
+                if(i+(r>0)>tolerance)i=r=0;
+                if(leftist)
+                    for(col=0;col<wp;)  {
+                        printf("%s",get_id(words[col]));
+                        if(++col<wp)
+                            spaces(1+i+(r-- >0));
+                    }
+                else
+                    for(r=wp-1-r,col=0;col<wp;) {
+                        printf("%s",get_id(words[col]));
+                        if(++col<wp)
+                            spaces(1+i+(r-- <=0));
+                    }
+                leftist=!leftist,wp=0,col=0,putchar('\n');
+            }
+            col+=w;
+            words[wp++]=hd[n];
+        } else undefs=cons(hd[n],undefs); /* undefined but have good types */
+        n = tl[n];
+    }
+    if(wp)
+        for(col=0;col<wp;)
+    printf("%s",get_id(words[col])),putc(++col==wp?'\n':' ',stdout);
+    if(undefs==NIL)return;
+    undefs=reverse(undefs);
+    printlist("SPECIFIED BUT NOT DEFINED: ",undefs);
 }
 
 word detrop=NIL; /* list of unused local definitions */
