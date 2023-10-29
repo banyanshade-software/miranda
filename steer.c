@@ -1342,213 +1342,223 @@ word bereaved; /* typenames referred to in exports and not exported */
 word ld_stuff=NIL;
     /* list of list of files, to be unloaded if mkincludes interrupted */
 
-void loadfile(t)
-char *t;
-{ extern word fileq;
-  extern word current_id,includees,embargoes,exportfiles,freeids,exports;
-  extern word fnts,FBS,nextpn;
-  word h=NIL; /* location of %export directive, if present */
-  loading=1;
-  errs=errline=0;
-  current_script=t;
-  oldfiles=NIL;
-  unload();
-  if(stat(t,&buf))
-    { if(initialising){ fprintf(stderr,"panic: %s not found\n",t); exit(1); }
-      if(verbosity)printf("new file %s\n",t);
-      if(magic)fprintf(stderr,"mira -exec %s%s\n",t,": no such file"),exit(1);
-      if(making&&ideep==0)printf("mira -make %s%s\n",t,": no such file");
-      else oldfiles=cons(make_fil(t,0,0,NIL),NIL);
-	     /* for correct record of sources */
-      loading=0;
-      return; }
-  if(!openfile(t))
-    { if(initialising){ fprintf(stderr,"panic: cannot open %s\n",t); exit(1); }
-      printf("cannot open %s\n",t); 
-      oldfiles=cons(make_fil(t,0,0,NIL),NIL);
-      loading=0;
-      return; }
-  files = cons(make_fil(t,fm_time(t),1,NIL),NIL);
-  current_file = hd[files],tl[hd[fileq]] = current_file;
-  if(initialising&&strcmp(t,PRELUDE)==0)privlib(); else
-  if(initialising||nostdenv==1)
-    if(strcmp(t,STDENV)==0)stdlib();
-  c = ' ';
-  col = 0;
-  s_in = (FILE *)hd[hd[fileq]];
-  adjust_prefix(t);
-/*if(magic&&!initialising)
-    { if(!(getc(s_in)=='#'&&getc(s_in)=='!'))
-	{ files=NIL; return; }
-      while(getc(s_in)!='\n');
-      commandmode=1;
-      c=MAGIC; }
-  else  /* change to magic scripts 19.11.2013 */
-  commandmode = 0;
-  if(verbosity||making)printf("compiling %s\n",t);
-  nextpn=0; /* lose pnames */
-  embargoes=detrop=
-  fnts=rfl=bereaved=ld_stuff=exportfiles=freeids=exports=includees=FBS=NIL;
-  yyparse();
-  if(!SYNERR&&exportfiles!=NIL)
-    { /* check pathnames in exportfiles have unique bindings */
-      word s,i,count;
-      for(s=exportfiles;s!=NIL;s=tl[s])
-	 if(hd[s]==PLUS) /* add current script (less freeids) to exports */
-	 { for(i=fil_defs(hd[files]);i!=NIL;i=tl[i])
-              if(isvariable(hd[i])&&!isfreeid(hd[i]))
-	        tl[exports]=add1(hd[i],tl[exports]);
-	 } else
-	 /* pathnames are expanded to their contents in mkincludes */
-         { for(count=0,i=includees;i!=NIL;i=tl[i])
-              if(!strcmp((char *)hd[hd[hd[i]]],(char *)hd[s]))
-		hd[s]=hd[hd[hd[i]]]/*sharing*/,count++;
-	   if(count!=1)
-	     SYNERR=1,
-	     printf("illegal fileid \"%s\" in export list (%s)\n",
-	            (char *)hd[s],
-		    count?"ambiguous":"not %included in script");
-	 }
-      if(SYNERR)
-	sayhere(hd[exports],1),
-        printf("compilation abandoned\n");
+void loadfile(char *t)
+{
+    extern word fileq;
+    extern word current_id,includees,embargoes,exportfiles,freeids,exports;
+    extern word fnts,FBS,nextpn;
+    word h=NIL; /* location of %export directive, if present */
+    loading=1;
+    errs=errline=0;
+    current_script=t;
+    oldfiles=NIL;
+    unload();
+    if(stat(t,&buf)) {
+        if(initialising){ fprintf(stderr,"panic: %s not found\n",t); exit(1); }
+        if(verbosity)printf("new file %s\n",t);
+        if(magic)fprintf(stderr,"mira -exec %s%s\n",t,": no such file"),exit(1);
+        if(making&&ideep==0)printf("mira -make %s%s\n",t,": no such file");
+        else oldfiles=cons(make_fil(t,0,0,NIL),NIL);
+        /* for correct record of sources */
+        loading=0;
+        return;
     }
-  if(!SYNERR&&includees!=NIL)
-    files=append1(files,mkincludes(includees)),includees=NIL;
-  ld_stuff=NIL;
-  if(!SYNERR)
-    { if(verbosity||making&&!mkexports&&!mksources)
-	printf("checking types in %s\n",t);
-      checktypes();
-      /* printf("typecheck complete\n"); /* DEBUG */ }
-  if(!SYNERR&&exports!=NIL)
-    if(ND!=NIL)exports=NIL; else /* skip check, cannot be %included */
-    { /* check exports all present and close under type info */
-      word e,u=NIL,n=NIL,c=NIL;
-      h=hd[exports]; exports=tl[exports];
-      for(e=embargoes;e!=NIL;e=tl[e])
-	 { if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND); else
-	   if(!member(exports,hd[e]))n=cons(hd[e],n); }
-      if(embargoes!=NIL)
-        exports=setdiff(exports,embargoes);
-      exports=alfasort(exports);
-      for(e=exports;e!=NIL;e=tl[e])
-	 if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND); else
-	 if(id_type(hd[e])==type_t&&t_class(hd[e])==algebraic_t)
-	   c=shunt(t_info(hd[e]),c);  /* constructors */
-      if(exports==NIL)printf("warning, export list has void contents\n");
-      else exports=append1(alfasort(c),exports);
-      if(n!=NIL)
-	{ printf("redundant entr%s in export list:",tl[n]==NIL?"y":"ies"); 
-	  while(n!=NIL)printf(" -%s",get_id(hd[n])),n=tl[n]; n=1; /* flag */
-	  putchar('\n'); }
-      if(u!=NIL)exports=NIL,
-	        printlist("undefined names in export list: ",u);
-      if(u!=NIL)sayhere(h,1),h=NIL; else
-      if(exports==NIL||n!=NIL)out_here(stderr,h,1),h=NIL;
-   /* for warnings call out_here not sayhere, so errinfo not saved in dump */
+    if(!openfile(t)) {
+        if(initialising){ fprintf(stderr,"panic: cannot open %s\n",t); exit(1); }
+        printf("cannot open %s\n",t);
+        oldfiles=cons(make_fil(t,0,0,NIL),NIL);
+        loading=0;
+        return;
     }
-  if(!SYNERR&&ND==NIL&&(exports!=NIL||tl[files]!=NIL))
-    { /* find out if script can create type orphans when %included */
-      word e1,t;
-      word r=NIL; /* collect list of referenced typenames */
-      word e=NIL; /* and list of exported typenames */
-      if(exports!=NIL)
-      for(e1=exports;e1!=NIL;e1=tl[e1])
-         { if((t=id_type(hd[e1]))==type_t)
-	     if(t_class(hd[e1])==synonym_t)
-	       r=UNION(r,deps(t_info(hd[e1])));
-	     else e=cons(hd[e1],e);
-	   else r=UNION(r,deps(t)); } else
-      for(e1=fil_defs(hd[files]);e1!=NIL;e1=tl[e1])
-         { if((t=id_type(hd[e1]))==type_t)
-	     if(t_class(hd[e1])==synonym_t)
-	       r=UNION(r,deps(t_info(hd[e1])));
-	     else e=cons(hd[e1],e);
-	   else r=UNION(r,deps(t)); }
-      for(e1=freeids;e1!=NIL;e1=tl[e1])
-	 if((t=id_type(hd[hd[e1]]))==type_t)
-	   if(t_class(hd[hd[e1]])==synonym_t)
-	     r=UNION(r,deps(t_info(hd[hd[e1]])));
-	   else e=cons(hd[hd[e1]],e);
-	 else r=UNION(r,deps(t));
-      /*printlist("r: ",r); /* DEBUG */
-      for(;r!=NIL;r=tl[r])
-	 if(!member(e,hd[r]))bereaved=cons(hd[r],bereaved);
-      /*printlist("bereaved: ",bereaved); /* DEBUG */
+    files = cons(make_fil(t,fm_time(t),1,NIL),NIL);
+    current_file = hd[files],tl[hd[fileq]] = current_file;
+    if(initialising&&strcmp(t,PRELUDE)==0)privlib();
+    else if(initialising||nostdenv==1)
+        if (strcmp(t,STDENV)==0) stdlib();
+    c = ' ';
+    col = 0;
+    s_in = (FILE *)hd[hd[fileq]];
+    adjust_prefix(t);
+    /*if(magic&&!initialising)
+     { if(!(getc(s_in)=='#'&&getc(s_in)=='!'))
+     { files=NIL; return; }
+     while(getc(s_in)!='\n');
+     commandmode=1;
+     c=MAGIC; }
+     else  /* change to magic scripts 19.11.2013 */
+    commandmode = 0;
+    if(verbosity||making)printf("compiling %s\n",t);
+    nextpn=0; /* lose pnames */
+    embargoes=detrop=
+    fnts=rfl=bereaved=ld_stuff=exportfiles=freeids=exports=includees=FBS=NIL;
+    yyparse();
+    if(!SYNERR&&exportfiles!=NIL) {
+        /* check pathnames in exportfiles have unique bindings */
+        word s,i,count;
+        for(s=exportfiles;s!=NIL;s=tl[s])
+        if(hd[s]==PLUS) {/* add current script (less freeids) to exports */
+            for(i=fil_defs(hd[files]);i!=NIL;i=tl[i])
+            if(isvariable(hd[i])&&!isfreeid(hd[i]))
+                tl[exports]=add1(hd[i],tl[exports]);
+        } else {
+            /* pathnames are expanded to their contents in mkincludes */
+            for(count=0,i=includees;i!=NIL;i=tl[i])
+            if(!strcmp((char *)hd[hd[hd[i]]],(char *)hd[s]))
+                hd[s]=hd[hd[hd[i]]]/*sharing*/,count++;
+            if(count!=1)
+                SYNERR=1,
+                printf("illegal fileid \"%s\" in export list (%s)\n",
+                       (char *)hd[s],
+                       count?"ambiguous":"not %included in script");
+        }
+        if(SYNERR)
+            sayhere(hd[exports],1),
+            printf("compilation abandoned\n");
     }
-  if(exports!=NIL&&bereaved!=NIL)
-    { extern word newtyps;
-      word b=intersection(bereaved,newtyps);
-      /*printlist("newtyps",newtyps); /* DEBUG */
-      if(b!=NIL)
-	/*ND=b; /* to escalate to type error, see also allnamescom */
-	printf("warning, export list is incomplete - missing typename%s: ",
-		tl[b]==NIL?"":"s"),
-	printlist("",b);
-      if(b!=NIL&&h!=NIL)out_here(stdout,h,1); /* sayhere(h,1) for error */
+    if(!SYNERR&&includees!=NIL)
+        files=append1(files,mkincludes(includees)),includees=NIL;
+    ld_stuff=NIL;
+    if(!SYNERR)  {
+        if(verbosity||making&&!mkexports&&!mksources)
+            printf("checking types in %s\n",t);
+        checktypes();
+        /* printf("typecheck complete\n"); /* DEBUG */ }
+    if(!SYNERR&&exports!=NIL)
+        if(ND!=NIL)exports=NIL;
+        else { /* skip check, cannot be %included */
+            /* check exports all present and close under type info */
+            word e,u=NIL,n=NIL,c=NIL;
+            h=hd[exports]; exports=tl[exports];
+            for(e=embargoes;e!=NIL;e=tl[e]) { if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND);
+            else if(!member(exports,hd[e]))n=cons(hd[e],n);
+            }
+            if(embargoes!=NIL)
+                exports=setdiff(exports,embargoes);
+            exports=alfasort(exports);
+            for(e=exports;e!=NIL;e=tl[e])
+            if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND); else
+                if(id_type(hd[e])==type_t&&t_class(hd[e])==algebraic_t)
+                    c=shunt(t_info(hd[e]),c);  /* constructors */
+            if(exports==NIL)printf("warning, export list has void contents\n");
+            else exports=append1(alfasort(c),exports);
+            if(n!=NIL) {
+                printf("redundant entr%s in export list:",tl[n]==NIL?"y":"ies");
+                while(n!=NIL)printf(" -%s",get_id(hd[n])),n=tl[n]; n=1; /* flag */
+                putchar('\n');
+            }
+            if(u!=NIL)exports=NIL,
+                printlist("undefined names in export list: ",u);
+            if(u!=NIL)sayhere(h,1),h=NIL; else
+                if(exports==NIL||n!=NIL)out_here(stderr,h,1),h=NIL;
+            /* for warnings call out_here not sayhere, so errinfo not saved in dump */
+        }
+    if(!SYNERR&&ND==NIL&&(exports!=NIL||tl[files]!=NIL)) {
+        /* find out if script can create type orphans when %included */
+        word e1,t;
+        word r=NIL; /* collect list of referenced typenames */
+        word e=NIL; /* and list of exported typenames */
+        if(exports!=NIL)
+            for(e1=exports;e1!=NIL;e1=tl[e1]) {
+                if((t=id_type(hd[e1]))==type_t)
+                    if(t_class(hd[e1])==synonym_t)
+                        r=UNION(r,deps(t_info(hd[e1])));
+                    else e=cons(hd[e1],e);
+                else r=UNION(r,deps(t));
+            } else
+                for(e1=fil_defs(hd[files]);e1!=NIL;e1=tl[e1])  { if((t=id_type(hd[e1]))==type_t)
+                    if(t_class(hd[e1])==synonym_t)
+                        r=UNION(r,deps(t_info(hd[e1])));
+                    else e=cons(hd[e1],e);
+                    else r=UNION(r,deps(t));
+                }
+        for(e1=freeids;e1!=NIL;e1=tl[e1])
+        if((t=id_type(hd[hd[e1]]))==type_t)
+            if(t_class(hd[hd[e1]])==synonym_t)
+                r=UNION(r,deps(t_info(hd[hd[e1]])));
+            else e=cons(hd[hd[e1]],e);
+            else r=UNION(r,deps(t));
+        /*printlist("r: ",r); /* DEBUG */
+        for(;r!=NIL;r=tl[r])
+        if(!member(e,hd[r]))bereaved=cons(hd[r],bereaved);
+        /*printlist("bereaved: ",bereaved); /* DEBUG */
     }
-  if(!SYNERR&&detrop!=NIL)
-    { word gd=detrop; 
-      while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)detrop=tl[detrop];
-      if(detrop!=NIL)
-        printf("warning, script contains unused local definitions:-\n");
-      while(detrop!=NIL)
-	   { out_here(stdout,hd[hd[tl[dval(hd[detrop])]]],0), putchar('\t');
-             out_pattern(stdout,dlhs(hd[detrop])), putchar('\n');
-	     detrop=tl[detrop];
-             while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)
-		  detrop=tl[detrop]; }
-      while(gd!=NIL&&tag[dval(hd[gd])]!=LABEL)gd=tl[gd];
-      if(gd!=NIL)
-        printf("warning, grammar contains unused nonterminals:-\n");
-      while(gd!=NIL)
-	   { out_here(stdout,hd[dval(hd[gd])],0), putchar('\t');
-             out_pattern(stdout,dlhs(hd[gd])), putchar('\n');
-	     gd=tl[gd];
-             while(gd!=NIL&&tag[dval(hd[gd])]!=LABEL)gd=tl[gd]; }
-      /* note, usual rhs is tries(pat,list(label(here,exp)))
-               grammar rhs is label(here,...) */
+    if(exports!=NIL&&bereaved!=NIL)  {
+        extern word newtyps;
+        word b=intersection(bereaved,newtyps);
+        /*printlist("newtyps",newtyps); /* DEBUG */
+        if(b!=NIL)
+        /*ND=b; /* to escalate to type error, see also allnamescom */
+            printf("warning, export list is incomplete - missing typename%s: ",
+                   tl[b]==NIL?"":"s"),
+            printlist("",b);
+        if(b!=NIL&&h!=NIL)out_here(stdout,h,1); /* sayhere(h,1) for error */
     }
-  if(!SYNERR)
-    { word x; extern int lfrule;
+    if(!SYNERR&&detrop!=NIL) {
+        word gd=detrop;
+        while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)detrop=tl[detrop];
+        if(detrop!=NIL)
+            printf("warning, script contains unused local definitions:-\n");
+        while(detrop!=NIL)  {
+            out_here(stdout,hd[hd[tl[dval(hd[detrop])]]],0), putchar('\t');
+            out_pattern(stdout,dlhs(hd[detrop])), putchar('\n');
+            detrop=tl[detrop];
+            while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)
+                detrop=tl[detrop];
+        }
+        while(gd!=NIL&&tag[dval(hd[gd])]!=LABEL)gd=tl[gd];
+        if(gd!=NIL)
+            printf("warning, grammar contains unused nonterminals:-\n");
+        while(gd!=NIL) {
+            out_here(stdout,hd[dval(hd[gd])],0), putchar('\t');
+            out_pattern(stdout,dlhs(hd[gd])), putchar('\n');
+            gd=tl[gd];
+            while(gd!=NIL&&tag[dval(hd[gd])]!=LABEL) gd=tl[gd];
+        }
+        /* note, usual rhs is tries(pat,list(label(here,exp)))
+         grammar rhs is label(here,...) */
+    }
+    if(!SYNERR)  {
+        word x; extern int lfrule;
       /* we invoke the code generator */
       lfrule=0;
-      for(x=fil_defs(hd[files]);x!=NIL;x=tl[x])
-         if(id_type(hd[x])!=type_t)
-	   { current_id=hd[x];
-	     polyshowerror=0;
-	     id_val(hd[x])=codegen(id_val(hd[x]));
-	     if(polyshowerror)id_val(hd[x])=UNDEF;
-	     /* nb - one remaining class of typerrs trapped in codegen,
-		namely polymorphic show or readvals */
-           }
-      current_id=0;
-      if(lfrule&&(verbosity||making))
-	printf("grammar optimisation: %d common left factors found\n",lfrule);
-      if(initialising&&ND!=NIL)
-        { fprintf(stderr,"panic: %s contains errors\n",okprel?"stdenv":"prelude"); 
-	  exit(1); }
-      if(initialising)makedump(); else
-      if(normal(t)) /* file ends ".m", formerly if(!magic) */
-        fixexports(),makedump(),unfixexports();
-      /* changed 26.11.2019 to allow dump of magic scripts ending ".m" */
-      if(!errline&&errs&&(char *)hd[errs]==current_script)
-	errline=tl[errs]; /* soft error (posn not saved in dump) */
-      ND=alfasort(ND);
-      /* we could sort and remove pnames from each defs component immediately
+        for(x=fil_defs(hd[files]);x!=NIL;x=tl[x])
+        if(id_type(hd[x])!=type_t) {
+            current_id=hd[x];
+            polyshowerror=0;
+            id_val(hd[x])=codegen(id_val(hd[x]));
+            if(polyshowerror)id_val(hd[x])=UNDEF;
+            /* nb - one remaining class of typerrs trapped in codegen,
+             namely polymorphic show or readvals */
+        }
+        current_id=0;
+        if(lfrule&&(verbosity||making))
+            printf("grammar optimisation: %d common left factors found\n",lfrule);
+        if(initialising&&ND!=NIL)  {
+            fprintf(stderr,"panic: %s contains errors\n",okprel?"stdenv":"prelude");
+            exit(1);
+        }
+        if(initialising)makedump();
+        else if(normal(t)) /* file ends ".m", formerly if(!magic) */
+            fixexports(),makedump(),unfixexports();
+        /* changed 26.11.2019 to allow dump of magic scripts ending ".m" */
+        if(!errline&&errs&&(char *)hd[errs]==current_script)
+            errline=tl[errs]; /* soft error (posn not saved in dump) */
+        ND=alfasort(ND);
+        /* we could sort and remove pnames from each defs component immediately
          after makedump(), instead of doing this in namescom */
-      loading=0;
-      return; }
-  /* otherwise syntax error found */
-  if(initialising)
-    { fprintf(stderr,"panic: cannot compile %s\n",okprel?"stdenv":"prelude"); exit(1); }
-  oldfiles=files;
-  unload();
-  if(normal(t)&&SYNERR!=2)makedump(); /* make syntax error dump */
-  /* allow dump of magic script in ".m", was if(!magic&&) 26.11.2019 */
-  SYNERR=0;
-  loading=0;
+        loading=0;
+        return;
+    }
+    /* otherwise syntax error found */
+    if(initialising)  {
+        fprintf(stderr,"panic: cannot compile %s\n",okprel?"stdenv":"prelude"); exit(1);
+    }
+    oldfiles=files;
+    unload();
+    if(normal(t)&&SYNERR!=2)makedump(); /* make syntax error dump */
+    /* allow dump of magic script in ".m", was if(!magic&&) 26.11.2019 */
+    SYNERR=0;
+    loading=0;
 } 
 
 word isfreeid(x)
