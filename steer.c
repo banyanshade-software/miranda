@@ -1842,230 +1842,242 @@ static word mkincludes(word includees)
 }
 
 word tlost=NIL;
-word pfrts=NIL; /* list of private free types bound in this script */
+static word pfrts=NIL; /* list of private free types bound in this script */
 
-void readoption() /* readopt type orphans */
-{ word f,t;
-  extern word TYPERRS,FBS;
-  pfrts=tlost=NIL;
-  /* exclude anonymous free types, these dealt with later by mcheckfbs() */
-  if(FBS!=NIL)
-  for(f=FBS;f!=NIL;f=tl[f])
-     for(t=tl[hd[f]];t!=NIL;t=tl[t])
-        if(tag[hd[hd[t]]]==STRCONS&&tl[tl[hd[t]]]==type_t)
-          pfrts=cons(hd[hd[t]],pfrts);
-  /* this may needlessly scan `silent' files - fix later */
-  for(;rfl!=NIL;rfl=tl[rfl])
-  for(f=fil_defs(hd[rfl]);f!=NIL;f=tl[f])
-     if(tag[hd[f]]==ID)
-     if((t=id_type(hd[f]))==type_t)
-       { if(t_class(hd[f])==synonym_t)
-           t_info(hd[f])=fixtype(t_info(hd[f]),hd[f]); }
-     else id_type(hd[f])=fixtype(t,hd[f]);
-  if(tlost==NIL)return;
-  TYPERRS++;
-  printf("MISSING TYPENAME%s\n",tl[tlost]==NIL?"":"S");
-  printf("the following type%s no name in this scope:\n",
-         tl[tlost]==NIL?" is needed but has":"s are needed but have");
-  /* structure of tlost is list of cons(losttype,list-of-ids) */
-  for(;tlost!=NIL;tlost=tl[tlost])
-     { /* printf("tinfo_tlost=");out(stdout,t_info(hd[hd[tlost]]));
-        putchar(';'); /*DEBUG */
-       printf("\'%s\' of file \"%s\", needed by: ",
-       (char *)hd[hd[t_info(hd[hd[tlost]])]],
-       (char *)hd[tl[t_info(hd[hd[tlost]])]]);
-       printlist("",alfasort(tl[hd[tlost]])); }
+void readoption(void) /* readopt type orphans */
+{
+    word f,t;
+    extern word TYPERRS,FBS;
+    pfrts=tlost=NIL;
+    /* exclude anonymous free types, these dealt with later by mcheckfbs() */
+    if(FBS!=NIL)
+        for(f=FBS;f!=NIL;f=tl[f])
+    for(t=tl[hd[f]];t!=NIL;t=tl[t])
+    if(tag[hd[hd[t]]]==STRCONS&&tl[tl[hd[t]]]==type_t)
+        pfrts=cons(hd[hd[t]],pfrts);
+    /* this may needlessly scan `silent' files - fix later */
+    for(;rfl!=NIL;rfl=tl[rfl])
+    for(f=fil_defs(hd[rfl]);f!=NIL;f=tl[f])
+    if(tag[hd[f]]==ID)
+        if((t=id_type(hd[f]))==type_t) {
+            if(t_class(hd[f])==synonym_t)
+                t_info(hd[f])=fixtype(t_info(hd[f]),hd[f]);
+        } else id_type(hd[f])=fixtype(t,hd[f]);
+    if (tlost==NIL) return;
+    TYPERRS++;
+    printf("MISSING TYPENAME%s\n",tl[tlost]==NIL?"":"S");
+    printf("the following type%s no name in this scope:\n",
+           tl[tlost]==NIL?" is needed but has":"s are needed but have");
+    /* structure of tlost is list of cons(losttype,list-of-ids) */
+    for(;tlost!=NIL;tlost=tl[tlost])  { /* printf("tinfo_tlost=");out(stdout,t_info(hd[hd[tlost]]));
+                                         putchar(';'); /*DEBUG */
+        printf("\'%s\' of file \"%s\", needed by: ",
+               (char *)hd[hd[t_info(hd[hd[tlost]])]],
+               (char *)hd[tl[t_info(hd[hd[tlost]])]]);
+        printlist("",alfasort(tl[hd[tlost]]));
+    }
 }
 
-word fixtype(t,x)  /* substitute out any indirected typenames in t */
-word t,x;
-{ switch(tag[t])
-  { case AP: 
-    case CONS: tl[t]=fixtype(tl[t],x);
-               hd[t]=fixtype(hd[t],x);
-    default:   return(t);
-    case STRCONS: if(member(pfrts,t))return(t);  /* see jrcfree.bug */
-		  while(tag[pn_val(t)]!=CONS)t=pn_val(t);/*at most twice*/
-		  if(tag[t]!=ID)
-		  { /* lost type - record in tlost */
-		    word w=tlost;
-		    while(w!=NIL&&hd[hd[w]]!=t)w=tl[w];
-		    if(w==NIL)
-		      w=tlost=cons(cons(t,cons(x,NIL)),tlost);
-		    tl[hd[w]]=add1(x,tl[hd[w]]); 
-		  }
-		  return(t);
-  }
+word fixtype(word t, word x)  /* substitute out any indirected typenames in t */
+{
+    switch(tag[t]) {
+        case AP:
+        case CONS:
+            tl[t]=fixtype(tl[t],x);
+            hd[t]=fixtype(hd[t],x);
+        default:
+            return(t);
+        case STRCONS:
+            if(member(pfrts,t))return(t);  /* see jrcfree.bug */
+            while(tag[pn_val(t)]!=CONS)t=pn_val(t);/*at most twice*/
+            if(tag[t]!=ID)   { /* lost type - record in tlost */
+                word w=tlost;
+                while(w!=NIL&&hd[hd[w]]!=t)w=tl[w];
+                if(w==NIL)
+                    w=tlost=cons(cons(t,cons(x,NIL)),tlost);
+                tl[hd[w]]=add1(x,tl[hd[w]]);
+            }
+            return(t);
+    }
 }
 
 #define mask(c) (c&0xDF)
 /* masks out lower case bit, which is 0x20  */
-word alfa_ls(a,b)  /* 'DICTIONARY ORDER' - not currently used */
-char *a,*b;
-{ while(*a&&mask(*a)==mask(*b))a++,b++;
-  if(mask(*a)==mask(*b))return(strcmp(a,b)<0); /* lower case before upper */
-  return(mask(*a)<mask(*b));
+static word alfa_ls(char *a, char *b)  /* 'DICTIONARY ORDER' - not currently used */
+{
+    while(*a&&mask(*a)==mask(*b))a++,b++;
+    if(mask(*a)==mask(*b))return(strcmp(a,b)<0); /* lower case before upper */
+    return(mask(*a)<mask(*b));
 }
 
-word alfasort(x) /* also removes non_IDs from result */
-word x;
-{ word a=NIL,b=NIL,hold=NIL;
-  if(x==NIL)return(NIL);
-  if(tl[x]==NIL)return(tag[hd[x]]!=ID?NIL:x);
-  while(x!=NIL) /* split x */
-       { if(tag[hd[x]]==ID)hold=a,a=cons(hd[x],b),b=hold;
-	 x=tl[x]; }
-  a=alfasort(a),b=alfasort(b);
-  /* now merge two halves back together */
-  while(a!=NIL&&b!=NIL)
-  if(strcmp(get_id(hd[a]),get_id(hd[b]))<0)x=cons(hd[a],x),a=tl[a];
-  else x=cons(hd[b],x),b=tl[b];
-  if(a==NIL)a=b;
-  while(a!=NIL)x=cons(hd[a],x),a=tl[a];
-  return(reverse(x));
+word alfasort(word x) /* also removes non_IDs from result */
+{
+    word a=NIL,b=NIL,hold=NIL;
+    if(x==NIL)return(NIL);
+    if(tl[x]==NIL)return(tag[hd[x]]!=ID?NIL:x);
+    while(x!=NIL) {/* split x */
+        if(tag[hd[x]]==ID)hold=a,a=cons(hd[x],b),b=hold;
+        x=tl[x];
+    }
+    a=alfasort(a),b=alfasort(b);
+    /* now merge two halves back together */
+    while(a!=NIL&&b!=NIL)
+        if(strcmp(get_id(hd[a]),get_id(hd[b]))<0)x=cons(hd[a],x),a=tl[a];
+        else x=cons(hd[b],x),b=tl[b];
+    if(a==NIL)a=b;
+    while(a!=NIL)x=cons(hd[a],x),a=tl[a];
+    return(reverse(x));
 }
 
-void unsetids(d) /* d is a list of identifiers */
-word d;
-{ while(d!=NIL)
-       { if(tag[hd[d]]==ID)id_val(hd[d])=UNDEF,
-			   id_who(hd[d])=NIL,
-			   id_type(hd[d])=undef_t;
-	 d=tl[d]; } /* should we remove from namebucket ? */
+void unsetids(word d) /* d is a list of identifiers */
+{
+    while(d!=NIL) {
+        if (tag[hd[d]]==ID)id_val(hd[d])=UNDEF,
+            id_who(hd[d])=NIL,
+            id_type(hd[d])=undef_t;
+        d=tl[d];
+    } /* should we remove from namebucket ? */
 }
 
-void unload()  /* clear out current script in preparation for reloading */
-{ extern word TABSTRS,SGC,speclocs,newtyps,rv_script,algshfns,nextpn,nolib,
-	     includees,freeids;
-  word x;
-  sorted=0;
-  speclocs=NIL;
-  nextpn=0; /* lose pnames */
-  rv_script=0;
-  algshfns=NIL;
-  unsetids(newtyps);
-  newtyps=NIL;
-  unsetids(freeids);
-  freeids=includees=SGC=freeids=TABSTRS=ND=NIL;
-  unsetids(internals);
-  internals=NIL;
-  while(files!=NIL)
-  { unsetids(fil_defs(hd[files]));
-    fil_defs(hd[files])=NIL;
-    files = tl[files]; }
-  for(;ld_stuff!=NIL;ld_stuff=tl[ld_stuff])
-  for(x=hd[ld_stuff];x!=NIL;x=tl[x])unsetids(fil_defs(hd[x]));
+static void unload(void)  /* clear out current script in preparation for reloading */
+{
+    extern word TABSTRS,SGC,speclocs,newtyps,rv_script,algshfns,nextpn,nolib,
+    includees,freeids;
+    word x;
+    sorted=0;
+    speclocs=NIL;
+    nextpn=0; /* lose pnames */
+    rv_script=0;
+    algshfns=NIL;
+    unsetids(newtyps);
+    newtyps=NIL;
+    unsetids(freeids);
+    freeids=includees=SGC=freeids=TABSTRS=ND=NIL;
+    unsetids(internals);
+    internals=NIL;
+    while(files!=NIL) {
+        unsetids(fil_defs(hd[files]));
+        fil_defs(hd[files])=NIL;
+        files = tl[files];
+    }
+    for(;ld_stuff!=NIL;ld_stuff=tl[ld_stuff])
+    for(x=hd[ld_stuff];x!=NIL;x=tl[x])unsetids(fil_defs(hd[x]));
 }
 
-void yyerror(s)  /* called by YACC in the event of a syntax error */
-char *s;
-{ extern int yychar;
-  if(SYNERR)return;  /* error already reported, so shut up */
-  if(echoing)printf("\n");
-  printf("%s - unexpected ",s);
-  if(yychar==OFFSIDE&&(c==EOF||c=='|'))
-    { if(c==EOF) /* special case introduced by fix for dtbug */
-      printf("end of file"); else
-      printf("token '|'");
-      /* special case introduced by sreds fix to offside rule */
-    } else
-  { printf(yychar==0?commandmode?"newline":"end of file":"token ");
-    if(yychar>=256)putchar('\"');
-    if(yychar!=0)out2(stdout,yychar);
-    if(yychar>=256)putchar('\"'); }
-  printf("\n");
-  SYNERR=1;
-  reset_lex();
+void yyerror(char *s)  /* called by YACC in the event of a syntax error */
+{
+    extern int yychar;
+    if(SYNERR)return;  /* error already reported, so shut up */
+    if(echoing)printf("\n");
+    printf("%s - unexpected ",s);
+    if(yychar==OFFSIDE&&(c==EOF||c=='|')) {
+        if(c==EOF) /* special case introduced by fix for dtbug */
+            printf("end of file"); else
+                printf("token '|'");
+        /* special case introduced by sreds fix to offside rule */
+    } else {
+        printf(yychar==0?commandmode?"newline":"end of file":"token ");
+        if(yychar>=256)putchar('\"');
+        if(yychar!=0)out2(stdout,yychar);
+        if(yychar>=256)putchar('\"');
+    }
+    printf("\n");
+    SYNERR=1;
+    reset_lex();
 }
 
-void syntax(s) /* called by actions after discovering a (context sensitive) syntax
+void syntax(char *s) /* called by actions after discovering a (context sensitive) syntax
               error */
-char *s;
-{ if(SYNERR)return;
-  if(echoing)printf("\n");
-  printf("syntax error: %s",s);
-  SYNERR=1;  /* this will stop YACC at its next call to yylex() */
-  reset_lex();
+{
+    if(SYNERR)return;
+    if(echoing)printf("\n");
+    printf("syntax error: %s",s);
+    SYNERR=1;  /* this will stop YACC at its next call to yylex() */
+    reset_lex();
 }
 
-void acterror() /* likewise, but assumes error message output by caller */
-{ if(SYNERR)return;
-  SYNERR=1;  /* to stop YACC at next symbol */
-  reset_lex();
+void acterror(void) /* likewise, but assumes error message output by caller */
+{
+    if(SYNERR)return;
+    SYNERR=1;  /* to stop YACC at next symbol */
+    reset_lex();
 }
 
-void mira_setup()
-{ extern word common_stdin,common_stdinb,cook_stdin;
-  setupheap();
-  tsetup();
-  reset_pns();
-  bigsetup();
-  common_stdin= ap(READ,0);
-  common_stdinb= ap(READBIN,0);
-  cook_stdin=ap(readvals(0,0),OFFSIDE);
-  nill= cons(CONST,NIL);
-  Void=make_id("()");
-  id_type(Void)=void_t;
-  id_val(Void)=constructor(0,Void);
-  message=make_id("sys_message");
-  main_id=make_id("main");       /* change to magic scripts 19.11.2013 */
-  concat=make_id("concat");
-  diagonalise=make_id("diagonalise");
-  standardout=constructor(0,"Stdout");
-  indent_fn=make_id("indent");
-  outdent_fn=make_id("outdent");
-  listdiff_fn=make_id("listdiff");
-  shownum1=make_id("shownum1");
-  showbool=make_id("showbool");
-  showchar=make_id("showchar");
-  showlist=make_id("showlist");
-  showstring=make_id("showstring");
-  showparen=make_id("showparen");
-  showpair=make_id("showpair");
-  showvoid=make_id("showvoid");
-  showfunction=make_id("showfunction");
-  showabstract=make_id("showabstract");
-  showwhat=make_id("showwhat");
-  primlib(); } /* sets up predefined ids, not referred to by rules.y */
+void mira_setup(void)
+{
+    extern word common_stdin,common_stdinb,cook_stdin;
+    setupheap();
+    tsetup();
+    reset_pns();
+    bigsetup();
+    common_stdin= ap(READ,0);
+    common_stdinb= ap(READBIN,0);
+    cook_stdin=ap(readvals(0,0),OFFSIDE);
+    nill= cons(CONST,NIL);
+    Void=make_id("()");
+    id_type(Void)=void_t;
+    id_val(Void)=constructor(0,Void);
+    message=make_id("sys_message");
+    main_id=make_id("main");       /* change to magic scripts 19.11.2013 */
+    concat=make_id("concat");
+    diagonalise=make_id("diagonalise");
+    standardout=constructor(0,"Stdout");
+    indent_fn=make_id("indent");
+    outdent_fn=make_id("outdent");
+    listdiff_fn=make_id("listdiff");
+    shownum1=make_id("shownum1");
+    showbool=make_id("showbool");
+    showchar=make_id("showchar");
+    showlist=make_id("showlist");
+    showstring=make_id("showstring");
+    showparen=make_id("showparen");
+    showpair=make_id("showpair");
+    showvoid=make_id("showvoid");
+    showfunction=make_id("showfunction");
+    showabstract=make_id("showabstract");
+    showwhat=make_id("showwhat");
+    primlib();
+} /* sets up predefined ids, not referred to by rules.y */
 
-void dieclean()     /* called if evaluation is interrupted - see rules.y */
-{ printf("<<...interrupt>>\n");
+void dieclean(void)     /* called if evaluation is interrupted - see rules.y */
+{
+    printf("<<...interrupt>>\n");
 #ifndef NOSTATSONINT
-  outstats();  /* suppress in presence of segfault on ^C with /count */
+    outstats();  /* suppress in presence of segfault on ^C with /count */
 #endif
-  exit(0);
+    exit(0);
 }
 
 /* the function process() creates a process and waits for it to die -
-   returning 1 in the child and 0 in the parent - it is used in the
-   evaluation command (see rules.y) */
-word process()
-{ int pid;
-  sighandler oldsig;
-  oldsig = signal(SIGINT,SIG_IGN);
-        /* do not let parent receive interrupts intended for child */
-  if(pid=fork())
-  { /* parent */
-    int status; /* see man 2 exit, wait, signal */
-    if(pid== -1)
-      { perror("UNIX error - cannot create process");
+ returning 1 in the child and 0 in the parent - it is used in the
+ evaluation command (see rules.y) */
+word process(void)
+{
+    int pid;
+    sighandler oldsig;
+    oldsig = signal(SIGINT,SIG_IGN);
+    /* do not let parent receive interrupts intended for child */
+    if(pid=fork())  { /* parent */
+        int status; /* see man 2 exit, wait, signal */
+        if(pid== -1) { perror("UNIX error - cannot create process");
+            return(0);
+        }
+        while(pid!=wait(&status));
+        /* low byte of status is termination state of child, next byte is the
+         (low order byte of the) exit status */
+        if(WIFSIGNALED(status)) {/* abnormal termination status */
+            char *cd=status&0200?" (core dumped)":"";
+            char *pc=""; /* "probably caused by stack overflow\n";*/
+            switch(WTERMSIG(status))  { case SIGBUS: printf("\n<<...bus error%s>>\n%s",cd,pc); break;
+                case SIGSEGV: printf("\n<<...segmentation fault%s>>\n%s",cd,pc); break;
+                default: printf("\n<<...uncaught signal %d>>\n",WTERMSIG(status));
+            }
+        }
+        /*if(status >>= 8)printf("\n(exit status %d)\n",status); */
+        (void)signal(SIGINT,oldsig); /* restore interrupt status */
         return(0);
-      }
-    while(pid!=wait(&status));
-    /* low byte of status is termination state of child, next byte is the
-       (low order byte of the) exit status */
-    if(WIFSIGNALED(status)) /* abnormal termination status */
-    { char *cd=status&0200?" (core dumped)":"";
-      char *pc=""; /* "probably caused by stack overflow\n";*/
-      switch(WTERMSIG(status))
-      { case SIGBUS: printf("\n<<...bus error%s>>\n%s",cd,pc); break;
-        case SIGSEGV: printf("\n<<...segmentation fault%s>>\n%s",cd,pc); break;
-        default: printf("\n<<...uncaught signal %d>>\n",WTERMSIG(status));
-    } }
-    /*if(status >>= 8)printf("\n(exit status %d)\n",status); */
-    (void)signal(SIGINT,oldsig); /* restore interrupt status */
-    return(0); }
-  else return(1); /* child */
+    }
+    else return(1); /* child */
 }
 
 /* Notice that the Miranda system has a two-level interrupt structure.
@@ -2074,244 +2086,256 @@ word process()
       compilation it reverts to the top level prompt - see set_jmp and
       signal(reset) in commandloop() */
 
-void primdef(n,v,t)      /*  used by "primlib", see below  */
-char *n;
-word v,t;
-{ word x;
-  x= make_id(n);
-  primenv=cons(x,primenv);
-  id_val(x)= v;
-  id_type(x)=t; }
-
-void predef(n,v,t)      /*  used by "privlib" and "stdlib", see below  */
-char *n;
-word v,t;
-{ word x;
-  x= make_id(n);
-  addtoenv(x);
-  id_val(x)= isconstructor(x)?constructor(v,x):v;
-  id_type(x)=t;
+static void primdef(char *n, word v, word t)      /*  used by "primlib", see below  */
+{
+    word x;
+    x= make_id(n);
+    primenv=cons(x,primenv);
+    id_val(x)= v;
+    id_type(x)=t;
 }
 
-void primlib()   /*  called by "mira_setup", this routine enters
-                the primitive identifiers into the primitive environment  */
-{ primdef("num",make_typ(0,0,synonym_t,num_t),type_t);
-  primdef("char",make_typ(0,0,synonym_t,char_t),type_t);
-  primdef("bool",make_typ(0,0,synonym_t,bool_t),type_t);
-  primdef("True",1,bool_t); /* accessible only to 'finger' */
-  primdef("False",0,bool_t); /* likewise - FIX LATER */
+static void predef(char *n, word v, word t)      /* used by "privlib" and "stdlib", see below  */
+{
+    word x;
+    x= make_id(n);
+    addtoenv(x);
+    id_val(x)= isconstructor(x)?constructor(v,x):v;
+    id_type(x)=t;
 }
 
-void privlib()   /*  called when compiling <prelude>, adds some
+static void primlib(void)   /*  called by "mira_setup", this routine enters
+                      the primitive identifiers into the primitive environment  */
+{
+    primdef("num",make_typ(0,0,synonym_t,num_t),type_t);
+    primdef("char",make_typ(0,0,synonym_t,char_t),type_t);
+    primdef("bool",make_typ(0,0,synonym_t,bool_t),type_t);
+    primdef("True",1,bool_t); /* accessible only to 'finger' */
+    primdef("False",0,bool_t); /* likewise - FIX LATER */
+}
+
+static void privlib(void)   /*  called when compiling <prelude>, adds some
                 internally defined identifiers to the environment  */
-{ extern word ltchar;
-  predef("offside",OFFSIDE,ltchar);  /* used by `indent' in prelude */
-  predef("changetype",I,wrong_t); /* wrong_t to prevent being typechecked */
-  predef("first",HD,wrong_t);
-  predef("rest",TL,wrong_t);
-/* the following added to make prelude compilable without stdenv */
-  predef("code",CODE,undef_t);
-  predef("concat",ap2(FOLDR,APPEND,NIL),undef_t);
-  predef("decode",DECODE,undef_t);
-  predef("drop",DROP,undef_t);
-  predef("error",ERROR,undef_t);
-  predef("filter",FILTER,undef_t);
-  predef("foldr",FOLDR,undef_t);
-  predef("hd",HD,undef_t);
-  predef("map",MAP,undef_t);
-  predef("shownum",SHOWNUM,undef_t);
-  predef("take",TAKE,undef_t);
-  predef("tl",TL,undef_t);
+{
+    extern word ltchar;
+    predef("offside",OFFSIDE,ltchar);  /* used by `indent' in prelude */
+    predef("changetype",I,wrong_t); /* wrong_t to prevent being typechecked */
+    predef("first",HD,wrong_t);
+    predef("rest",TL,wrong_t);
+    /* the following added to make prelude compilable without stdenv */
+    predef("code",CODE,undef_t);
+    predef("concat",ap2(FOLDR,APPEND,NIL),undef_t);
+    predef("decode",DECODE,undef_t);
+    predef("drop",DROP,undef_t);
+    predef("error",ERROR,undef_t);
+    predef("filter",FILTER,undef_t);
+    predef("foldr",FOLDR,undef_t);
+    predef("hd",HD,undef_t);
+    predef("map",MAP,undef_t);
+    predef("shownum",SHOWNUM,undef_t);
+    predef("take",TAKE,undef_t);
+    predef("tl",TL,undef_t);
 }
 
-void stdlib() /*  called when compiling <stdenv>, adds some
-             internally defined identifiers to the environment  */
-{ predef("arctan",ARCTAN_FN,undef_t);
-  predef("code",CODE,undef_t);
-  predef("cos",COS_FN,undef_t);
-  predef("decode",DECODE,undef_t);
-  predef("drop",DROP,undef_t);
-  predef("entier",ENTIER_FN,undef_t);
-  predef("error",ERROR,undef_t);
-  predef("exp",EXP_FN,undef_t);
-  predef("filemode",FILEMODE,undef_t);
-  predef("filestat",FILESTAT,undef_t);  /* added Feb 91 */
-  predef("foldl",FOLDL,undef_t);
-  predef("foldl1",FOLDL1,undef_t);  /* new at release 2 */
-  predef("hugenum",sto_dbl(DBL_MAX),undef_t);
-  predef("last",LIST_LAST,undef_t);
-  predef("foldr",FOLDR,undef_t);
-  predef("force",FORCE,undef_t);
-  predef("getenv",GETENV,undef_t);
-  predef("integer",INTEGER,undef_t);
-  predef("log",LOG_FN,undef_t);
-  predef("log10",LOG10_FN,undef_t); /* new at release 2 */
-  predef("merge",MERGE,undef_t); /* new at release 2 */
-  predef("numval",NUMVAL,undef_t);
-  predef("read",STARTREAD,undef_t);
-  predef("readb",STARTREADBIN,undef_t);
-  predef("seq",SEQ,undef_t);
-  predef("shownum",SHOWNUM,undef_t);
-  predef("showhex",SHOWHEX,undef_t);
-  predef("showoct",SHOWOCT,undef_t);
-  predef("showfloat",SHOWFLOAT,undef_t); /* new at release 2 */
-  predef("showscaled",SHOWSCALED,undef_t); /* new at release 2 */
-  predef("sin",SIN_FN,undef_t);
-  predef("sqrt",SQRT_FN,undef_t);
-  predef("system",EXEC,undef_t); /* new at release 2 */
-  predef("take",TAKE,undef_t);
-  predef("tinynum",mktiny(),undef_t); /* new at release 2 */
-  predef("zip2",ZIP,undef_t); /* new at release 2 */
+static void stdlib(void) /*  called when compiling <stdenv>, adds some
+                          internally defined identifiers to the environment  */
+{
+    predef("arctan",ARCTAN_FN,undef_t);
+    predef("code",CODE,undef_t);
+    predef("cos",COS_FN,undef_t);
+    predef("decode",DECODE,undef_t);
+    predef("drop",DROP,undef_t);
+    predef("entier",ENTIER_FN,undef_t);
+    predef("error",ERROR,undef_t);
+    predef("exp",EXP_FN,undef_t);
+    predef("filemode",FILEMODE,undef_t);
+    predef("filestat",FILESTAT,undef_t);  /* added Feb 91 */
+    predef("foldl",FOLDL,undef_t);
+    predef("foldl1",FOLDL1,undef_t);  /* new at release 2 */
+    predef("hugenum",sto_dbl(DBL_MAX),undef_t);
+    predef("last",LIST_LAST,undef_t);
+    predef("foldr",FOLDR,undef_t);
+    predef("force",FORCE,undef_t);
+    predef("getenv",GETENV,undef_t);
+    predef("integer",INTEGER,undef_t);
+    predef("log",LOG_FN,undef_t);
+    predef("log10",LOG10_FN,undef_t); /* new at release 2 */
+    predef("merge",MERGE,undef_t); /* new at release 2 */
+    predef("numval",NUMVAL,undef_t);
+    predef("read",STARTREAD,undef_t);
+    predef("readb",STARTREADBIN,undef_t);
+    predef("seq",SEQ,undef_t);
+    predef("shownum",SHOWNUM,undef_t);
+    predef("showhex",SHOWHEX,undef_t);
+    predef("showoct",SHOWOCT,undef_t);
+    predef("showfloat",SHOWFLOAT,undef_t); /* new at release 2 */
+    predef("showscaled",SHOWSCALED,undef_t); /* new at release 2 */
+    predef("sin",SIN_FN,undef_t);
+    predef("sqrt",SQRT_FN,undef_t);
+    predef("system",EXEC,undef_t); /* new at release 2 */
+    predef("take",TAKE,undef_t);
+    predef("tinynum",mktiny(),undef_t); /* new at release 2 */
+    predef("zip2",ZIP,undef_t); /* new at release 2 */
 }
 
-word mktiny()
-{ volatile 
-  double x=1.0,x1=x/2.0;
-  while(x1>0.0)x=x1,x1/=2.0;
-  return(sto_dbl(x));
+word mktiny(void)
+{
+    volatile
+    double x=1.0,x1=x/2.0;
+    while(x1>0.0)x=x1,x1/=2.0;
+    return(sto_dbl(x));
 }
 
-word size(x)     /*  measures the size of a compiled expression   */
-word x;
-{ word s;
-  s= 0;
-  while(tag[x]==CONS||tag[x]==AP)
-  { s= s+1+size(hd[x]);
-    x= tl[x]; }
-    return(s); }
-
-void makedump()
-{ char *obf=linebuf;
-  FILE *f;
-  (void)strcpy(obf,current_script);
-  (void)strcpy(obf+strlen(obf)-1,obsuffix);
-  f=fopen(obf,"w");
-  if(!f){ printf("WARNING: CANNOT WRITE TO %s\n",obf); 
-	  if(strcmp(current_script,PRELUDE)==0||
-	     strcmp(current_script,STDENV)==0)
-          printf(
-	  "TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n");
-	  if(making&&!make_status)make_status=1;
-	  return; }
-  /* printf("dumping to %s\n",obf); /* DEBUG */
-  unlinkme=obf;
-  /* fchmod(fileno(f),0666); /* to make dumps writeable by all */ /* no! */
-  setprefix(current_script);
-  dump_script(files,f);
-  unlinkme=NULL;
-  fclose(f);
+word size(word x)     /*  measures the size of a compiled expression   */
+{
+    word s;
+    s= 0;
+    while(tag[x]==CONS||tag[x]==AP)  {
+        s= s+1+size(hd[x]);
+        x= tl[x];
+    }
+    return(s);
 }
 
-void undump(t) /* restore t from dump, or recompile if necessary */
-char *t;
-{ extern word BAD_DUMP,CLASHES;
-  if(!normal(t)&&!initialising)return loadfile(t);
-  /* except for prelude, only .m files have dumps */
-  char obf[pnlim];
-  FILE *f;
-  sighandler oldsig;
-  word flen=strlen(t);
-  time_t t1=fm_time(t),t2;
-  if(flen>pnlim)
-    { printf("sorry, pathname too long (limit=%d): %s\n",pnlim,t);
-      return; } /* if anyone complains, should remove this limit */
-  (void)strcpy(obf,t);
-  (void)strcpy(obf+flen-1,obsuffix);
-  t2=fm_time(obf);
-  if(t2&&!t1)t2=0,unlink(obf); /* dump is orphan - remove */
-  if(!t2||t2<t1) /* dump is nonexistent or older than source - ignore */
-    { loadfile(t); return; }
-  f=fopen(obf,"r");
-  if(!f){ printf("cannot open %s\n",obf); loadfile(t); return; }
-  current_script=t;
-  loading=1;
-  oldfiles=NIL;
-  unload();
-/*if(!initialising)printf("undumping from %s\n",obf); /* DEBUG */
-  if(!initialising&&!making) /* ie this is the main script */
-    sigflag=0,
-    oldsig=signal(SIGINT,(sighandler)sigdefer); 
+static void makedump(void)
+{
+    char *obf=linebuf;
+    FILE *f;
+    (void)strcpy(obf,current_script);
+    (void)strcpy(obf+strlen(obf)-1,obsuffix);
+    f=fopen(obf,"w");
+    if(!f) {
+        printf("WARNING: CANNOT WRITE TO %s\n",obf);
+        if(strcmp(current_script,PRELUDE)==0||
+           strcmp(current_script,STDENV)==0)
+            printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n");
+        if (making&&!make_status)make_status=1;
+        return;
+    }
+    /* printf("dumping to %s\n",obf); /* DEBUG */
+    unlinkme=obf;
+    /* fchmod(fileno(f),0666); /* to make dumps writeable by all */ /* no! */
+    setprefix(current_script);
+    dump_script(files,f);
+    unlinkme=NULL;
+    fclose(f);
+}
+
+static void undump(char *t) /* restore t from dump, or recompile if necessary */
+{
+    extern word BAD_DUMP,CLASHES;
+    if(!normal(t)&&!initialising)return loadfile(t);
+    /* except for prelude, only .m files have dumps */
+    char obf[pnlim];
+    FILE *f;
+    sighandler oldsig;
+    word flen=strlen(t);
+    time_t t1=fm_time(t),t2;
+    if(flen>pnlim) {
+        printf("sorry, pathname too long (limit=%d): %s\n",pnlim,t);
+        return;
+    } /* if anyone complains, should remove this limit */
+    (void)strcpy(obf,t);
+    (void)strcpy(obf+flen-1,obsuffix);
+    t2=fm_time(obf);
+    if(t2&&!t1)t2=0,unlink(obf); /* dump is orphan - remove */
+    if(!t2||t2<t1) {/* dump is nonexistent or older than source - ignore */
+        loadfile(t); return;
+    }
+    f=fopen(obf,"r");
+    if(!f) { printf("cannot open %s\n",obf); loadfile(t); return; }
+    current_script=t;
+    loading=1;
+    oldfiles=NIL;
+    unload();
+    /*if(!initialising)printf("undumping from %s\n",obf); /* DEBUG */
+    if(!initialising&&!making) /* ie this is the main script */
+        sigflag=0,
+        oldsig=signal(SIGINT,(sighandler)sigdefer);
     /* can't take interrupt during load_script */
-  files=load_script(f,t,NIL,NIL,!making&!initialising);
-  fclose(f);
-  if(BAD_DUMP)
-    { unlink(obf); unload(); CLASHES=NIL; stackp=dstack;
-      printf("warning: %s contains incorrect data (file removed)\n",obf);
-      if(BAD_DUMP== -1)printf("(unrecognised dump format)\n"); else
-      if(BAD_DUMP==1)printf("(wrong source file)\n"); else
-      printf("(error %ld)\n",BAD_DUMP); }
-  if(!initialising&&!making) /* restore interrupt handler */
-    (void)signal(SIGINT,oldsig);
-  if(sigflag)sigflag=0,(*oldsig)(); /* take deferred interrupt */
-  /*if(!initialising)printf("%s undumped\n",obf); /* DEBUG */
-  if(CLASHES!=NIL)
-    { if(ideep==0)printf("cannot load %s ",obf),
-                  printlist("due to name clashes: ",alfasort(CLASHES));
-      unload();
-      loading=0;
-      return; }
-  if(BAD_DUMP||src_update())loadfile(t);/* any sources modified since dump? */
-  else
-  if(initialising)
-    { if(ND!=NIL||files==NIL)  /* error in dump of PRELUDE */
-	fprintf(stderr,"panic: %s contains errors\n",obf),
-        exit(1); } /* beware of dangling else ! (whence {}) */
-  else
-  if(verbosity||magic||mkexports) /* for less silent making s/mkexports/making/ */
-  if(files==NIL)printf("%s contains syntax error\n",t); else
-  if(ND!=NIL)printf("%s contains undefined names or type errors\n",t); else
-  if(!making&&!magic)printf("%s\n",t); /* added &&!magic 26.11.2019 */
-  if(files!=NIL&&!making&!initialising)unfixexports();
-  loading=0;
+    files=load_script(f,t,NIL,NIL,!making&!initialising);
+    fclose(f);
+    if(BAD_DUMP) {
+        unlink(obf); unload(); CLASHES=NIL; stackp=dstack;
+        printf("warning: %s contains incorrect data (file removed)\n",obf);
+        if(BAD_DUMP== -1)printf("(unrecognised dump format)\n");
+        else if(BAD_DUMP==1)printf("(wrong source file)\n");
+        else
+            printf("(error %ld)\n",BAD_DUMP);
+    }
+    if(!initialising&&!making) /* restore interrupt handler */
+        (void)signal(SIGINT,oldsig);
+    if(sigflag)sigflag=0,(*oldsig)(); /* take deferred interrupt */
+    /*if(!initialising)printf("%s undumped\n",obf); /* DEBUG */
+    if(CLASHES!=NIL)  {
+        if(ideep==0)printf("cannot load %s ",obf),
+            printlist("due to name clashes: ",alfasort(CLASHES));
+        unload();
+        loading=0;
+        return;
+    }
+    if(BAD_DUMP||src_update()) loadfile(t);/* any sources modified since dump? */
+    else  if(initialising) {
+        if(ND!=NIL||files==NIL)  /* error in dump of PRELUDE */
+            fprintf(stderr,"panic: %s contains errors\n",obf),
+            exit(1);
+    } /* beware of dangling else ! (whence {}) */
+    else if(verbosity||magic||mkexports) /* for less silent making s/mkexports/making/ */
+        if(files==NIL)printf("%s contains syntax error\n",t);
+        else if(ND!=NIL)printf("%s contains undefined names or type errors\n",t);
+        else if(!making&&!magic)printf("%s\n",t); /* added &&!magic 26.11.2019 */
+    if(files!=NIL&&!making&!initialising)unfixexports();
+    loading=0;
 }
 
-void unlinkx(t) /* remove orphaned .x file */
-char *t;
-{ char *obf=linebuf;
-  (void)strcpy(obf,t);
-  (void)strcpy(obf+strlen(t)-1,obsuffix);
-  if(!stat(obf,&buf))unlink(obf);
+static void unlinkx(char *t) /* remove orphaned .x file */
+{
+    char *obf=linebuf;
+    (void)strcpy(obf,t);
+    (void)strcpy(obf+strlen(t)-1,obsuffix);
+    if(!stat(obf,&buf))unlink(obf);
 }
 
 void fpe_error()
-{ if(compiling)
-    { (void)signal(SIGFPE,(sighandler)fpe_error); /* reset SIGFPE trap */
+{
+    if(compiling) {
+        (void)signal(SIGFPE,(sighandler)fpe_error); /* reset SIGFPE trap */
 #ifdef sparc8
-      fpsetmask(commonmask);  /* to clear sticky bits */
+        fpsetmask(commonmask);  /* to clear sticky bits */
 #endif
-      syntax("floating point number out of range\n");
-      SYNERR=0; longjmp(env,1);
-      /* go straight back to commandloop - necessary because decoding very
-	 large numbers can cause huge no. of repeated SIGFPE exceptions */
+        syntax("floating point number out of range\n");
+        SYNERR=0; longjmp(env,1);
+        /* go straight back to commandloop - necessary because decoding very
+         large numbers can cause huge no. of repeated SIGFPE exceptions */
     }
-  else printf("\nFLOATING POINT OVERFLOW\n"),exit(1);
+    else printf("\nFLOATING POINT OVERFLOW\n"),exit(1);
 }
 
-char fbuf[512];
+static char fbuf[512];
 
-void filecopy(fil) /* copy the file "fil" to standard out */
-char *fil;
-{ word in=open(fil,0),n;
-  if(in== -1)return;
-  while((n=read(in,fbuf,512))>0)write(1,fbuf,n);
-  close(in);
+static void filecopy(char *fil) /* copy the file "fil" to standard out */
+{
+    word in=open(fil,0),n;
+    if(in== -1)return;
+    while((n=read(in,fbuf,512))>0)write(1,fbuf,n);
+    close(in);
 }
 
-void filecp(fil1,fil2) /* copy file "fil1" to "fil2" (like `cp') */
-char *fil1,*fil2;
-{ word in=open(fil1,0),n;
-  word out=creat(fil2,0644);
-  if(in== -1||out== -1)return;
-  while((n=read(in,fbuf,512))>0)write(out,fbuf,n);
-  close(in);
-  close(out);
+static void filecp(char *fil1, char *fil2) /* copy file "fil1" to "fil2" (like `cp') */
+{
+    word in=open(fil1,0),n;
+    word out=creat(fil2,0644);
+    if(in== -1||out== -1)return;
+    while((n=read(in,fbuf,512))>0)write(out,fbuf,n);
+    close(in);
+    close(out);
 }
 
 /* to define winsize and TIOCGWINSZ for twidth() */
 #include <termios.h>
 #include <sys/ioctl.h>
 
-int twidth()  /* returns width (in columns) of current window, less 2 */
+static int twidth(void)  /* returns width (in columns) of current window, less 2 */
 {
 #ifdef TIOCGWINSZ
     static struct winsize tsize;
@@ -2319,8 +2343,8 @@ int twidth()  /* returns width (in columns) of current window, less 2 */
     return (tsize.ws_col==0)?78:tsize.ws_col-2;
 #else
 #error TIOCGWINSZ undefined
-/* porting note: if you cannot find how to enable use of TIOCGWINSZ
-   comment out the above #error line */
+    /* porting note: if you cannot find how to enable use of TIOCGWINSZ
+     comment out the above #error line */
     return 78;   /* give up, we will assume screen width to be 80 */
 #endif
 }
@@ -2336,21 +2360,22 @@ int twidth()  /* returns width (in columns) of current window, less 2 */
 #ifdef CYGWIN
 #include <windows.h>
 
-int utf8test()
+static int utf8test(void)
 { return GetACP()==65001; }
 /* codepage 1252 is Windows version of Latin-1; 65001 is UTF-8 */
 
 #else
 
-int utf8test()
-{ char *lang;
-  if(!(lang=getenv("LC_CTYPE")))
-    lang=getenv("LANG");
-  if(lang&&
-     (strstr(lang,"UTF-8")||strstr(lang,"UTF8")||
-      strstr(lang,"utf-8")||strstr(lang,"utf8")))
-     return 1;
-  return 0;
+static int utf8test(void)
+{
+    char *lang;
+    if(!(lang=getenv("LC_CTYPE")))
+        lang=getenv("LANG");
+    if(lang&&
+       (strstr(lang,"UTF-8")||strstr(lang,"UTF8")||
+        strstr(lang,"utf-8")||strstr(lang,"utf8")))
+        return 1;
+    return 0;
 }
 #endif
 
