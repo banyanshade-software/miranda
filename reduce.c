@@ -67,38 +67,41 @@ int compare(word a, word b)  /* returns -1, 0, 1 as a is less than equal to or g
                   /* used by MATCH, EQ, NEQ, GR, GRE */
 {
     double d;
-L: switch(tag[a]) {
-    case DOUBLE:
-        if(tag[b]==DOUBLE)return(fsign(get_dbl(a)-get_dbl(b)));
-        else return(fsign(get_dbl(a)-bigtodbl(b)));
-    case INT:
-        if(tag[b]==INT)return(bigcmp(a,b));
-        else return(fsign(bigtodbl(a)-get_dbl(b)));
-    case UNICODE: return sign(get_char(a)-get_char(b));
-    case ATOM:
-        if(tag[b]==UNICODE) return sign(get_char(a)-get_char(b));
-        if(S<=a&&a<=ERROR||S<=b&&b<=ERROR)
-            fn_error("attempt to compare functions");
-        /* what about constructors - FIX LATER */
-        if(tag[b]==ATOM)return(sign(a-b)); /* order of declaration */
-        else return(-1); /* atomic object always less than non-atomic */
-    case CONSTRUCTOR:
-        if(tag[b]==CONSTRUCTOR)
-            return(sign(constr_tag(a)-constr_tag(b))); /*order of declaration*/
-        else return(-1); /* atom less than non-atom */
-    case CONS: case AP:
-        if(tag[a]==tag[b])
-        { word temp;
-            hd[a]=reduce(hd[a]);
-            hd[b]=reduce(hd[b]);
-            if((temp=compare(hd[a],hd[b]))!=0)return(temp);
-            a=tl[a]=reduce(tl[a]);
-            b=tl[b]=reduce(tl[b]);
-            goto L; }
-        else if(S<=b&&b<=ERROR)fn_error("attempt to compare functions");
-        else return(1); /* non-atom greater than atom */
-    default: fprintf(stderr,"\nghastly error in compare\n");
-}
+L:
+    switch(tag[a]) {
+        case DOUBLE:
+            if (tag[b]==DOUBLE) return (fsign(get_dbl(a)-get_dbl(b)));
+            else return(fsign(get_dbl(a)-bigtodbl(b)));
+        case INT:
+            if(tag[b]==INT)return(bigcmp(a,b));
+            else return(fsign(bigtodbl(a)-get_dbl(b)));
+        case UNICODE: return sign(get_char(a)-get_char(b));
+        case ATOM:
+            if(tag[b]==UNICODE) return sign(get_char(a)-get_char(b));
+            if(S<=a&&a<=ERROR||S<=b&&b<=ERROR)
+                fn_error("attempt to compare functions");
+            /* what about constructors - FIX LATER */
+            if(tag[b]==ATOM)return(sign(a-b)); /* order of declaration */
+            else return(-1); /* atomic object always less than non-atomic */
+        case CONSTRUCTOR:
+            if(tag[b]==CONSTRUCTOR)
+                return(sign(constr_tag(a)-constr_tag(b))); /*order of declaration*/
+            else return(-1); /* atom less than non-atom */
+        case CONS: case AP:
+            if(tag[a]==tag[b]) {
+                word temp;
+                hd[a]=reduce(hd[a]);
+                hd[b]=reduce(hd[b]);
+                if((temp=compare(hd[a],hd[b]))!=0)return(temp);
+                a=tl[a]=reduce(tl[a]);
+                b=tl[b]=reduce(tl[b]);
+                goto L;
+            }
+            else if (S<=b&&b<=ERROR) fn_error("attempt to compare functions");
+            else return(1); /* non-atom greater than atom */
+        default:
+            fprintf(stderr,"\nghastly error in compare\n");
+    }
     return(0);
 }
 
@@ -1980,7 +1983,7 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
             
         case READY(LOG10_FN): /* log10 */
             UPLEFT;
-            if(tag[lastarg]==INT)setdbl(e,biglog10(lastarg));
+            if(tag[lastarg]==INT) setdbl(e,biglog10(lastarg));
             else { errno=0; /* to clear */
                 fa=force_dbl(lastarg);
                 setdbl(e,log10(fa));
@@ -1991,7 +1994,7 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
             UPLEFT;
             errno=0; /* to clear */
             setdbl(e,sin(force_dbl(lastarg)));
-            if(errno)math_error("sin");
+            if (errno) math_error("sin");
             goto DONE;
             
         case READY(COS_FN): /* cos */
