@@ -20,6 +20,7 @@ struct stat buf; /* see man(2) stat - gets file status */
 #include "big.h"
 #include "lex.h"
 #include <float.h>
+
 word nill,Void;
 word main_id; /* change to magic scripts 19.11.2013 */
 word message,standardout;
@@ -150,288 +151,302 @@ jmp_buf env;
 fp_except commonmask = FP_X_INV|FP_X_OFL|FP_X_DZ; /* invalid|ovflo|divzero */
 #endif
 
-int main(argc,argv)  /* system initialisation, followed by call to YACC */
-int argc;
-char *argv[];
-{ word manonly=0;
-  char *home, *prs;
-  int okhome_rc; /* flags valid HOME/.mirarc file present */
-  char *argv0=argv[0];
-  char *initscript;
-  int badlib=0;
-  extern int ARGC; extern char **ARGV;
-  extern word newtyps,algshfns;
-  char *progname=rindex(argv[0],'/');
-  cstack= &manonly;
-/* used to indicate the base of the C stack for garbage collection purposes */
-  verbosity=isatty(0);
-/*if(isatty(1))*/ setbuf(stdout,NULL); /* for unbuffered tty output */
-  if(home=getenv("HOME"))
-    { strcpy(home_rc,home);
-      if(strcmp(home_rc,"/")==0)home_rc[0]=0; /* root is special case */
-      strcat(home_rc,"/.mirarc");
-      okhome_rc=rc_read(home_rc); }
-/*setup policy: 
-  if valid HOME/.mirarc found look no further, otherwise try 
-    <miralib>/.mirarc
-  Complaints - if any .mirarc contained bad data, `announce' complains about
-  the last such looked at.  */
-  UTF8OUT=UTF8=utf8test();
-  while(argc>1&&argv[1][0]=='-') /* strip off flags */
-  { if(strcmp(argv[1],"-stdenv")==0)nostdenv=1; else
-    if(strcmp(argv[1],"-count")==0)atcount=1; else
-    if(strcmp(argv[1],"-list")==0)listing=1; else
-    if(strcmp(argv[1],"-nolist")==0)listing=0; else
-    if(strcmp(argv[1],"-nostrictif")==0)strictif=0; else
-    if(strcmp(argv[1],"-gc")==0)atgc=1; else
-    if(strcmp(argv[1],"-object")==0)atobject=1; else
-    if(strcmp(argv[1],"-lib")==0)
-      { argc--,argv++;
-	if(argc==1)missparam("lib"); else miralib=argv[1];
-      } else
-    if(strcmp(argv[1],"-dic")==0)
-      { argc--,argv++;
-	if(argc==1)missparam("dic"); else
-	if(sscanf(argv[1],"%ld",&DICSPACE)!=1||badval(DICSPACE))
-	  fprintf(stderr,"mira: bad value after flag \"-dic\"\n"),exit(1);
-      } else
-    if(strcmp(argv[1],"-heap")==0)
-      { argc--,argv++;
-	if(argc==1)missparam("heap"); else
-	if(sscanf(argv[1],"%ld",&SPACELIMIT)!=1||badval(SPACELIMIT))
-	  fprintf(stderr,"mira: bad value after flag \"-heap\"\n"),exit(1);
-      } else
-    if(strcmp(argv[1],"-editor")==0)
-      { argc--,argv++;
-	if(argc==1)missparam("editor");
-	else editor=argv[1],fixeditor();
-      } else
-    if(strcmp(argv[1],"-hush")==0)verbosity=0; else
-    if(strcmp(argv[1],"-nohush")==0)verbosity=1; else
-    if(strcmp(argv[1],"-exp")==0||strcmp(argv[1],"-log")==0)
-      fprintf(stderr,"mira: obsolete flag \"%s\"\n"
-              "use \"-exec\" or \"-exec2\", see manual\n",
-              argv[1]),exit(1); else
-    if(strcmp(argv[1],"-exec")==0) /* replaces -exp 26.11.2019 */
-      ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0; else
-    if(strcmp(argv[1],"-exec2")==0) /* version of -exec for debugging CGI scripts */
-      { if(argc<=2)fprintf(stderr,"incorrect use of -exec2 flag, missing filename\n"),exit(1);
-        char *logfilname, *p=strrchr(argv[2],'/');
-        FILE *fil=NULL;
-        if(!p)p=argv[2]; /* p now holds last component of prog name */
-        if(logfilname=malloc((strlen(p)+9)))
-          sprintf(logfilname,"miralog/%s",p),
-          fil=fopen(logfilname,"a");
-        else mallocfail("logfile name");
-        /* process requires write permission on local directory "miralog" */
-        if(fil)dup2(fileno(fil),2); /* redirect stderr to log file */
-        else fprintf(stderr,"could not open %s\n",logfilname);
-        ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0; } else
-    if(strcmp(argv[1],"-man")==0){ manonly=1; break; } else
-    if(strcmp(argv[1],"-version")==0)v_info(0),exit(0); else
-    if(strcmp(argv[1],"-V")==0)v_info(1),exit(0); else
-    if(strcmp(argv[1],"-make")==0) making=1,verbosity=0; else
-    if(strcmp(argv[1],"-exports")==0) making=mkexports=1,verbosity=0; else
-    if(strcmp(argv[1],"-sources")==0) making=mksources=1,verbosity=0; else
-    if(strcmp(argv[1],"-UTF-8")==0) UTF8=1; else
-    if(strcmp(argv[1],"-noUTF-8")==0) UTF8=0; else
-    fprintf(stderr,"mira: unknown flag \"%s\"\n",argv[1]),exit(1);
-    argc--,argv++; }
-  if(argc>2&&!magic&&!making)fprintf(stderr,"mira: too many args\n"),exit(1);
-  if(!miralib) /* no -lib flag */
-    { char *m;
-      /* note search order */
-      if((m=getenv("MIRALIB")))miralib=m; else
-      if(checkversion(m="/usr/lib/miralib"))miralib=m; else
-      if(checkversion(m="/usr/local/lib/miralib"))miralib=m; else
-      if(checkversion(m="miralib"))miralib=m; else
-      badlib=1;
+int main(int argc, char *argv[])  /* system initialisation, followed by call to YACC */
+{
+    word manonly=0;
+    char *home, *prs;
+    int okhome_rc; /* flags valid HOME/.mirarc file present */
+    char *argv0=argv[0];
+    char *initscript;
+    int badlib=0;
+    extern int ARGC; extern char **ARGV;
+    extern word newtyps,algshfns;
+    char *progname=rindex(argv[0],'/');
+    cstack= &manonly;
+    /* used to indicate the base of the C stack for garbage collection purposes */
+    verbosity=isatty(0);
+    /*if(isatty(1))*/ setbuf(stdout,NULL); /* for unbuffered tty output */
+    if (home=getenv("HOME")) {
+        strcpy(home_rc,home);
+        if (strcmp(home_rc,"/")==0) home_rc[0]=0; /* root is special case */
+        strcat(home_rc,"/.mirarc");
+        okhome_rc=rc_read(home_rc);
     }
-  if(badlib)
-    { fprintf(stderr,"fatal error: miralib version %s not found\n",
-                     strvers(version));
-      libfails();
-      exit(1);
+    /*setup policy:
+     if valid HOME/.mirarc found look no further, otherwise try
+     <miralib>/.mirarc
+     Complaints - if any .mirarc contained bad data, `announce' complains about
+     the last such looked at.  */
+    UTF8OUT=UTF8=utf8test();
+    while(argc>1 && argv[1][0]=='-') { /* strip off flags */
+        if(strcmp(argv[1],"-stdenv")==0)nostdenv=1;
+        else if(strcmp(argv[1],"-count")==0)atcount=1;
+        else if(strcmp(argv[1],"-list")==0)listing=1;
+        else if(strcmp(argv[1],"-nolist")==0)listing=0;
+        else if(strcmp(argv[1],"-nostrictif")==0)strictif=0;
+        else if(strcmp(argv[1],"-gc")==0)atgc=1;
+        else if(strcmp(argv[1],"-object")==0)atobject=1;
+        else if(strcmp(argv[1],"-lib")==0) {
+            argc--,argv++;
+            if(argc==1)missparam("lib"); else miralib=argv[1];
+        } else if(strcmp(argv[1],"-dic")==0) {
+            argc--,argv++;
+            if(argc==1)missparam("dic"); else
+                if(sscanf(argv[1],"%ld",&DICSPACE)!=1||badval(DICSPACE))
+                    fprintf(stderr,"mira: bad value after flag \"-dic\"\n"),exit(1);
+        } else if(strcmp(argv[1],"-heap")==0) {
+            argc--,argv++;
+            if (argc==1) missparam("heap");
+            else if(sscanf(argv[1],"%ld",&SPACELIMIT)!=1||badval(SPACELIMIT))
+                fprintf(stderr,"mira: bad value after flag \"-heap\"\n"),exit(1);
+        } else if(strcmp(argv[1],"-editor")==0) {
+            argc--,argv++;
+            if (argc==1) missparam("editor");
+            else editor=argv[1],fixeditor();
+        } else  if(strcmp(argv[1],"-hush")==0)verbosity=0;
+        else if(strcmp(argv[1],"-nohush")==0)verbosity=1;
+        else if(strcmp(argv[1],"-exp")==0||strcmp(argv[1],"-log")==0)
+            fprintf(stderr,"mira: obsolete flag \"%s\"\n"
+                    "use \"-exec\" or \"-exec2\", see manual\n",
+                    argv[1]),exit(1);
+        else if(strcmp(argv[1],"-exec")==0) /* replaces -exp 26.11.2019 */
+            ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0;
+        else if(strcmp(argv[1],"-exec2")==0) {/* version of -exec for debugging CGI scripts */
+            if(argc<=2)fprintf(stderr,"incorrect use of -exec2 flag, missing filename\n"),exit(1);
+            char *logfilname, *p=strrchr(argv[2],'/');
+            FILE *fil=NULL;
+            if(!p)p=argv[2]; /* p now holds last component of prog name */
+            if(logfilname=malloc((strlen(p)+9)))
+                sprintf(logfilname,"miralog/%s",p),
+                fil=fopen(logfilname,"a");
+            else mallocfail("logfile name");
+            /* process requires write permission on local directory "miralog" */
+            if(fil)dup2(fileno(fil),2); /* redirect stderr to log file */
+            else fprintf(stderr,"could not open %s\n",logfilname);
+            ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0;
+        }
+        else if(strcmp(argv[1],"-man")==0){ manonly=1; break; }
+        else if(strcmp(argv[1],"-version")==0)v_info(0),exit(0);
+        else if(strcmp(argv[1],"-V")==0)v_info(1),exit(0);
+        else if(strcmp(argv[1],"-make")==0) making=1,verbosity=0;
+        else if(strcmp(argv[1],"-exports")==0) making=mkexports=1,verbosity=0;
+        else if(strcmp(argv[1],"-sources")==0) making=mksources=1,verbosity=0;
+        else if(strcmp(argv[1],"-UTF-8")==0) UTF8=1;
+        else if(strcmp(argv[1],"-noUTF-8")==0) UTF8=0;
+        else
+            fprintf(stderr,"mira: unknown flag \"%s\"\n",argv[1]),exit(1);
+        argc--,argv++; }
+    if(argc>2&&!magic&&!making)fprintf(stderr,"mira: too many args\n"),exit(1);
+    if(!miralib) { /* no -lib flag */
+        char *m;
+        /* note search order */
+        if((m=getenv("MIRALIB"))) miralib=m;
+        else if(checkversion(m="/usr/lib/miralib"))miralib=m;
+        else if(checkversion(m="/usr/local/lib/miralib"))miralib=m;
+        else if(checkversion(m="miralib"))miralib=m;
+        else
+            badlib=1;
     }
-  if(!okhome_rc)
-    { if(rc_error==lib_rc)rc_error=NULL;
-      (void)strcpy(lib_rc,miralib);
-      (void)strcat(lib_rc,"/.mirarc");
-      rc_read(lib_rc); }
-  if(editor==NULL)  /* .mirarc was absent or unreadable */
-    { editor=getenv("EDITOR");
-      if(editor==NULL)editor=EDITOR;
-      else strcpy(ebuf,editor),editor=ebuf,fixeditor(); }
-  if(prs=getenv("MIRAPROMPT"))promptstr=prs;
-  if(getenv("RECHECKMIRA")&&!rechecking)rechecking=1;
-  if(getenv("NOSTRICTIF"))strictif=0;
-  setupdic(); /* used by mkabsolute */
-  s_in=stdin;
-  s_out=stdout;
-  miralib=mkabsolute(miralib); /* protection against "/cd" */
-  if(manonly)manaction(),exit(0);
-  (void)strcpy(PRELUDE,miralib); (void)strcat(PRELUDE,"/prelude");
-  /* convention - change spelling of "prelude" at each release */
-  (void)strcpy(STDENV,miralib);
-  (void)strcat(STDENV,"/stdenv.m");
-  mira_setup();
-  if(verbosity)announce();
-  files=NIL;
-  undump(PRELUDE),okprel=1;
-  mkprivate(fil_defs(hd[files]));
-  files=NIL; /* don't wish unload() to unsetids on prelude */
-  if(!nostdenv)
-    { undump(STDENV);
-      while(files!=NIL)  /* stdenv may have %include structure */
-           primenv=alfasort(append1(primenv,fil_defs(hd[files]))),
-	   files=tl[files];
-      primenv=alfasort(primenv);
-      newtyps=files=NIL; /* don't wish unload() to unsetids */ }
-  if(!magic)rc_write();
-  echoing = verbosity&listing;
-  initialising=0;
-  if(mkexports)
-    { /* making=1, to say if recompiling, also to undump as for %include */
-      word f,argcount=argc-1;
-      extern word exports,freeids;
-      char *s;
-      setjmp(env); /* will return here on blankerr (via reset) */
-      while(--argc) /* where do error messages go?? */
-	   { word x=NIL;
-	     s=addextn(1,*++argv);
-	     if(s==dicp)keep(dicp);
-	     undump(s); /* bug, recompile messages goto stdout - FIX LATER */
-	     if(files==NIL||ND!=NIL)continue;
-	     if(argcount!=1)printf("%s\n",s);
-	     if(exports!=NIL)x=exports;
-		/* true (if ever) only if just recompiled */
-	     else for(f=files;f!=NIL;f=tl[f])x=append1(fil_defs(hd[f]),x);
-	          /* method very clumsy, because exports not saved in dump */
-	     if(freeids!=NIL)
-	       { word f=freeids;
-		 while(f!=NIL)
-		      { word n=findid((char *)hd[hd[tl[hd[f]]]]);
-			id_type(n)=tl[tl[hd[f]]];
-			id_val(n)=the_val(hd[hd[f]]);
-			hd[f]=n;
-			f=tl[f]; }
-		 f=freeids=typesfirst(freeids);
-		 printf("\t%%free {\n");
-		 while(f!=NIL)
-		       putchar('\t'),
-		       report_type(hd[f]),
-		       putchar('\n'),
-		       f=tl[f];
-		 printf("\t}\n"); }
-	     for(x=typesfirst(alfasort(x));x!=NIL;x=tl[x])
-	        { putchar('\t');
-	          report_type(hd[x]);
-		  putchar('\n'); } }
-      exit(0); }
-  if(mksources){ extern word oldfiles;
-	         char *s;
-		 word f,x=NIL;
-                 setjmp(env); /* will return here on blankerr (via reset) */
-	         while(--argc)
-		      if(stat((s=addextn(1,*++argv)),&buf)==0)
-		      { if(s==dicp)keep(dicp);
-			undump(s);
-                        for(f=files==NIL?oldfiles:files;f!=NIL;f=tl[f])
-		           if(!member(x,(word)get_fil(hd[f])))
-		             x=cons((word)get_fil(hd[f]),x),
-                             printf("%s\n",get_fil(hd[f]));
-		      }
-	         exit(0); }
-  if(making){ extern word oldfiles;
-	      char *s;
-              setjmp(env); /* will return here on blankerr (via reset) */
-	      while(--argc) /* where do error messages go?? */
-		   { s=addextn(1,*++argv);
-		     if(s==dicp)keep(dicp);
-                     undump(s);
-		     if(ND!=NIL||files==NIL&&oldfiles!=NIL)
-		       { if(make_status==1)make_status=0;
-		         make_status=strcons(s,make_status); }
-		     /* keep list of source files with error-dumps */
-		   }
-	      if(tag[make_status]==STRCONS)
-		{ word h=0,maxw=0,w,n;
-		  printf("errors or undefined names found in:-\n");
-		  while(make_status) /* reverse to get original order */
-		       { h=strcons(hd[make_status],h);
-		         w=strlen((char *)hd[h]);
-		         if(w>maxw)maxw=w;
-		         make_status=tl[make_status]; }
-		  maxw++;n=78/maxw;w=0;
-		  while(h)
-		       printf("%*s%s",(int)maxw,(char *)hd[h],(++w%n)?"":"\n"),
-		       h=tl[h];
-		  if(w%n)printf("\n");
-		  make_status=1; }
-	      exit(make_status); }
-  initscript= argc==1?"script.m":magic?argv[1]:addextn(1,argv[1]);
-  if(initscript==dicp)keep(dicp);
+    if(badlib) {
+        fprintf(stderr,"fatal error: miralib version %s not found\n",
+              strvers(version));
+        libfails();
+        exit(1);
+    }
+    if (!okhome_rc) {
+        if (rc_error==lib_rc) rc_error=NULL;
+        (void)strcpy(lib_rc,miralib);
+        (void)strcat(lib_rc,"/.mirarc");
+        rc_read(lib_rc);
+    }
+    if(editor==NULL) {  /* .mirarc was absent or unreadable */
+        editor=getenv("EDITOR");
+        if(editor==NULL)editor=EDITOR;
+        else strcpy(ebuf,editor),editor=ebuf,fixeditor();
+    }
+    if(prs=getenv("MIRAPROMPT"))promptstr=prs;
+    if(getenv("RECHECKMIRA")&&!rechecking)rechecking=1;
+    if(getenv("NOSTRICTIF"))strictif=0;
+    setupdic(); /* used by mkabsolute */
+    s_in=stdin;
+    s_out=stdout;
+    miralib=mkabsolute(miralib); /* protection against "/cd" */
+    if(manonly)manaction(),exit(0);
+    (void)strcpy(PRELUDE,miralib); (void)strcat(PRELUDE,"/prelude");
+    /* convention - change spelling of "prelude" at each release */
+    (void)strcpy(STDENV,miralib);
+    (void)strcat(STDENV,"/stdenv.m");
+    mira_setup();
+    if(verbosity)announce();
+    files=NIL;
+    undump(PRELUDE),okprel=1;
+    mkprivate(fil_defs(hd[files]));
+    files=NIL; /* don't wish unload() to unsetids on prelude */
+    if(!nostdenv)  { undump(STDENV);
+        while(files!=NIL)  /* stdenv may have %include structure */
+            primenv=alfasort(append1(primenv,fil_defs(hd[files]))),
+            files=tl[files];
+        primenv=alfasort(primenv);
+        newtyps=files=NIL; /* don't wish unload() to unsetids */
+    }
+    if (!magic) rc_write();
+    echoing = verbosity&listing;
+    initialising=0;
+    if(mkexports) { /* making=1, to say if recompiling, also to undump as for %include */
+        word f,argcount=argc-1;
+        extern word exports,freeids;
+        char *s;
+        setjmp(env); /* will return here on blankerr (via reset) */
+        while(--argc) { /* where do error messages go?? */
+            word x=NIL;
+            s=addextn(1,*++argv);
+            if (s==dicp) keep(dicp);
+            undump(s); /* bug, recompile messages goto stdout - FIX LATER */
+            if(files==NIL||ND!=NIL)continue;
+            if(argcount!=1)printf("%s\n",s);
+            if(exports!=NIL)x=exports;
+            /* true (if ever) only if just recompiled */
+            else for(f=files;f!=NIL;f=tl[f])x=append1(fil_defs(hd[f]),x);
+            /* method very clumsy, because exports not saved in dump */
+            if (freeids!=NIL) {
+                word f=freeids;
+                while(f!=NIL) {
+                    word n=findid((char *)hd[hd[tl[hd[f]]]]);
+                    id_type(n)=tl[tl[hd[f]]];
+                    id_val(n)=the_val(hd[hd[f]]);
+                    hd[f]=n;
+                    f=tl[f];
+                }
+                f=freeids=typesfirst(freeids);
+                printf("\t%%free {\n");
+                while (f!=NIL)
+                    putchar('\t'),
+                    report_type(hd[f]),
+                    putchar('\n'),
+                    f=tl[f];
+                printf("\t}\n");
+            }
+            for (x=typesfirst(alfasort(x));x!=NIL;x=tl[x]) {
+                putchar('\t');
+                report_type(hd[x]);
+                putchar('\n');
+            }
+        }
+        exit(0);
+    }
+    if (mksources) {
+        extern word oldfiles;
+        char *s;
+        word f,x=NIL;
+        setjmp(env); /* will return here on blankerr (via reset) */
+        while(--argc)
+            if(stat((s=addextn(1,*++argv)),&buf)==0) {
+                if(s==dicp)keep(dicp);
+                undump(s);
+                for(f=files==NIL?oldfiles:files;f!=NIL;f=tl[f])
+                if(!member(x,(word)get_fil(hd[f])))
+                    x=cons((word)get_fil(hd[f]),x),
+                    printf("%s\n",get_fil(hd[f]));
+            }
+        exit(0);
+    }
+    if (making) {
+        extern word oldfiles;
+        char *s;
+        setjmp(env); /* will return here on blankerr (via reset) */
+        while (--argc) { /* where do error messages go?? */
+            s=addextn(1,*++argv);
+            if(s==dicp)keep(dicp);
+            undump(s);
+            if(ND!=NIL||files==NIL&&oldfiles!=NIL) {
+                if(make_status==1)make_status=0;
+                make_status=strcons(s,make_status);
+            }
+            /* keep list of source files with error-dumps */
+        }
+        if (tag[make_status]==STRCONS) {
+            word h=0,maxw=0,w,n;
+            printf("errors or undefined names found in:-\n");
+            while(make_status) {/* reverse to get original order */
+                h=strcons(hd[make_status],h);
+                w=strlen((char *)hd[h]);
+                if (w>maxw) maxw=w;
+                make_status=tl[make_status];
+            }
+            maxw++;n=78/maxw;w=0;
+            while(h)
+                printf("%*s%s",(int)maxw,(char *)hd[h],(++w%n)?"":"\n"),
+                h=tl[h];
+            if(w%n)printf("\n");
+            make_status=1;
+        }
+        exit(make_status);
+    }
+    initscript = argc==1 ? "script.m" : magic?argv[1]:addextn(1,argv[1]);
+    if(initscript==dicp)keep(dicp);
 #if sparc8
-  fpsetmask(commonmask);
+    fpsetmask(commonmask);
 #elif defined sparc
-  ieee_handler("set","common",(sighandler)fpe_error);
+    ieee_handler("set","common",(sighandler)fpe_error);
 #endif
 #if !defined sparc | sparc8
-  (void)signal(SIGFPE,(sighandler)fpe_error); /* catch arithmetic overflow */
+    (void)signal(SIGFPE,(sighandler)fpe_error); /* catch arithmetic overflow */
 #endif
-  (void)signal(SIGTERM,(sighandler)exit); /* flush buffers if killed */
-  commandloop(initscript);
+    (void)signal(SIGTERM,(sighandler)exit); /* flush buffers if killed */
+    commandloop(initscript);
 	     /* parameter is file given as argument */
 }
 
-int vstack[4];  /* record of miralib versions looked at */
-char *mstack[4]; /* and where found */
-int mvp=0;
+static int vstack[4];  /* record of miralib versions looked at */
+static char *mstack[4]; /* and where found */
+static int mvp=0;
 
-int checkversion(m)
+static int checkversion(char *m)
 /* returns 1 iff m is directory with .version containing our version number */
-char *m;
-{ int v1,read=0,r=0;
-  FILE *f=fopen(strcat(strcpy(linebuf,m),"/.version"),"r");
-  if(f&&fscanf(f,"%u",&v1)==1)r= v1==version, read=1;
-  if(f)fclose(f);
-  if(read&&!r)mstack[mvp]=m,vstack[mvp++]=v1;
-  return r;
+{
+    int v1,read=0,r=0;
+    FILE *f=fopen(strcat(strcpy(linebuf,m),"/.version"),"r");
+    if(f&&fscanf(f,"%u",&v1)==1)r= v1==version, read=1;
+    if(f)fclose(f);
+    if(read&&!r)mstack[mvp]=m,vstack[mvp++]=v1;
+    return r;
 }
 
-void libfails()
-{ word i=0;
-  fprintf(stderr,"found");
-  for(;i<mvp;i++)fprintf(stderr,"\tversion %s at: %s\n",
-                         strvers(vstack[i]),mstack[i]);
+static void libfails(void)
+{
+    word i=0;
+    fprintf(stderr,"found");
+    for(;i<mvp;i++)fprintf(stderr,"\tversion %s at: %s\n",
+                           strvers(vstack[i]),mstack[i]);
 }
 
-char *strvers(v)
-int v;
-{ static char vbuf[12];
-  if(v<0||v>999999)return "\?\?\?";
-  snprintf(vbuf,12,"%.3f",v/1000.0); 
-  return vbuf;
+static char *strvers(int v)
+{
+    static char vbuf[12];
+    if(v<0||v>999999)return "\?\?\?";
+    snprintf(vbuf,12,"%.3f",v/1000.0);
+    return vbuf;
 }
 
-char *mkabsolute(m)  /* make sure m is an absolute pathname */
-char *m;
-{ if(m[0]=='/')return(m);
-  if(!getcwd(dicp,pnlim))fprintf(stderr,"panic: cwd too long\n"),exit(1);
-  (void)strcat(dicp,"/");
-  (void)strcat(dicp,m);
-  m=dicp;
-  dicp=dicq+=strlen(dicp)+1;
-  dic_check();
-  return(m);
+static char *mkabsolute(char *m)  /* make sure m is an absolute pathname */
+{
+    if(m[0]=='/')return(m);
+    if (!getcwd(dicp,pnlim)) fprintf(stderr,"panic: cwd too long\n"),exit(1);
+    (void)strcat(dicp,"/");
+    (void)strcat(dicp,m);
+    m=dicp;
+    dicp=dicq+=strlen(dicp)+1;
+    dic_check();
+    return(m);
 }
 
-void missparam(s)
-char *s;
-{ fprintf(stderr,"mira: missing param after flag \"-%s\"\n",s);
-  exit(1); }
+static void missparam(char *s)
+{
+    fprintf(stderr,"mira: missing param after flag \"-%s\"\n",s);
+    exit(1);
+}
 
-int oldversion=0;
+static int oldversion=0;
 #define colmax 400
 #define spaces(s) for(j=s;j>0;j--)putchar(' ')
 
