@@ -692,70 +692,74 @@ void declare(word x, word e)    /* translates  <pattern> = <exp>  at top level  
     }
 }
 
-word scanpattern(p,x,e,fail) /* declare ids in x as components of `p=e', each as
-		                n = ($p.n)e,  result is list of bindings */
-word p,x,e,fail;
-{ if(hd[x]==CONST||isconstructor(x))return(NIL);
-  if(tag[x]==ID){ word binding=
-		  cons(x,ap2(TRY,ap(lambda(p,x),e),fail));
-		  return(cons(binding,NIL)); }
-  if(tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
-    return(scanpattern(p,tl[x],e,fail));
-  return(shunt(scanpattern(p,hd[x],e,fail),scanpattern(p,tl[x],e,fail)));
+static word scanpattern(word p, word x, word e, word fail) /* declare ids in x as components of `p=e', each as
+                                                     n = ($p.n)e,  result is list of bindings */
+{
+    if(hd[x]==CONST||isconstructor(x)) return(NIL);
+    if(tag[x]==ID) {
+        word binding=
+        cons(x,ap2(TRY,ap(lambda(p,x),e),fail));
+        return(cons(binding,NIL));
+    }
+    if(tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
+        return(scanpattern(p,tl[x],e,fail));
+    return(shunt(scanpattern(p,hd[x],e,fail),scanpattern(p,tl[x],e,fail)));
 }
 
-word get_ids(x) /* return list of names in pattern x (without repetitions) */
-word x;
-{ if(hd[x]==CONST||isconstructor(x))return(NIL);
-  if(tag[x]==ID)return(cons(x,NIL));
-  if(tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
-    return(get_ids(tl[x]));
-  return(UNION(get_ids(hd[x]),get_ids(tl[x])));
+word get_ids(word x) /* return list of names in pattern x (without repetitions) */
+{
+    if(hd[x]==CONST||isconstructor(x))return(NIL);
+    if(tag[x]==ID)return(cons(x,NIL));
+    if(tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
+        return(get_ids(tl[x]));
+    return(UNION(get_ids(hd[x]),get_ids(tl[x])));
 }
 
-word mktuple(x) /* extract tuple-structure of names from pattern x */
-word x;
-{ if(hd[x]==CONST||isconstructor(x))return(NIL);
-  if(tag[x]==ID)return(x);
-  if(tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
-    return(mktuple(tl[x]));
-{ word y=mktuple(tl[x]); x=mktuple(hd[x]);
-  return(x==NIL?y:y==NIL?x:pair(x,y));
-}}
-
-void decl1(x,e)  /* declare name x to have the value denoted by e */
-word x,e;
-{ if(id_val(x)!=UNDEF&&lastname!=x)
-    { errs=hd[e]; nameclash(x); return; }
-  if(id_val(x)==UNDEF)
-    { id_val(x)= tries(x,cons(e,NIL));
-      if(id_who(x)!=NIL)speclocs=cons(cons(x,id_who(x)),speclocs);
-      id_who(x)= hd[e]; /* here-info */
-      if(id_type(x)==undef_t)addtoenv(x);
-    } else
-  if(!fallible(hd[tl[id_val(x)]]))
-    errs=hd[e],
-    printf("%ssyntax error: unreachable case in defn of \"%s\"\n",
-	    echoing?"\n":"",get_id(x)),
-                acterror();
-  else tl[id_val(x)]= cons(e,tl[id_val(x)]);
-/* multi-clause definitions are composed as tries(id,rhs_list)
-   where id is included purely for diagnostic purposes
-   note that rhs_list is reversed - put right by code generation */
+static word mktuple(word x) /* extract tuple-structure of names from pattern x */
+{
+    if (hd[x]==CONST||isconstructor(x)) return(NIL);
+    if(tag[x]==ID)return(x);
+    if(tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
+        return(mktuple(tl[x]));
+    {
+        word y=mktuple(tl[x]); x=mktuple(hd[x]);
+        return(x==NIL?y:y==NIL?x:pair(x,y));
+    }
 }
 
-word fallible(e) /* e is "fallible" rhs - if not sure, says yes */
-word e;
-{ for(;;)
-  { if(tag[e]==LABEL)e=tl[e];
-    if(tag[e]==LETREC||tag[e]==LET)e=tl[e]; else
-    if(tag[e]==LAMBDA)
-      if(irrefutable(hd[e]))e=tl[e];
-      else return(1); else
-    if(tag[e]==AP&&tag[hd[e]]==AP&&tag[hd[hd[e]]]==AP&&hd[hd[hd[e]]]==COND)
-	 e=tl[e]; else
-    return(e==FAIL);   /* test for nested (COND a b FAIL) */
-  }
+static void decl1(word x, word e)  /* declare name x to have the value denoted by e */
+{
+    if(id_val(x)!=UNDEF&&lastname!=x) {
+        errs=hd[e]; nameclash(x); return;
+    }
+    if(id_val(x)==UNDEF)  {
+        id_val(x)= tries(x,cons(e,NIL));
+        if(id_who(x)!=NIL)speclocs=cons(cons(x,id_who(x)),speclocs);
+        id_who(x)= hd[e]; /* here-info */
+        if(id_type(x)==undef_t)addtoenv(x);
+    } else if (!fallible(hd[tl[id_val(x)]]))
+        errs=hd[e],
+        printf("%ssyntax error: unreachable case in defn of \"%s\"\n",
+               echoing?"\n":"",get_id(x)),
+        acterror();
+    else tl[id_val(x)]= cons(e,tl[id_val(x)]);
+    /* multi-clause definitions are composed as tries(id,rhs_list)
+     where id is included purely for diagnostic purposes
+     note that rhs_list is reversed - put right by code generation */
+}
+
+word fallible(word e) /* e is "fallible" rhs - if not sure, says yes */
+{
+    for(;;) {
+        if(tag[e]==LABEL)e=tl[e];
+        if(tag[e]==LETREC||tag[e]==LET)e=tl[e]; else
+            if(tag[e]==LAMBDA)
+                if(irrefutable(hd[e]))e=tl[e];
+                else return(1); else
+                    if(tag[e]==AP&&tag[hd[e]]==AP&&tag[hd[hd[e]]]==AP&&hd[hd[hd[e]]]==COND)
+                        e=tl[e]; else
+                            return(e==FAIL);   /* test for nested (COND a b FAIL) */
+    }
 } /* NOTE
      When an rhs contains FAIL as a result of compiling an elseless guard set
      it is of the form
@@ -779,31 +783,34 @@ int i,n;
 wrong number of parameters for typename \"%s\" (%ld expected)\n",\
           echoing?"\n":"",get_id(tf),t_arity(tf)),errs=here,acterror()
 
-void decltype(tf,class,info,here)  /* declare a user defined type */
-word tf,class,info,here;
-{ word arity=0;
-  extern word errs;
-  while(tag[tf]==AP)arity++,tf=hd[tf];
-  if(class==synonym_t&&id_type(tf)==type_t&&t_class(tf)==abstract_t
-     &&t_info(tf)==undef_t)
-    { /* this is binding for declared but not yet bound abstract typename */
-      arity_check;
-      id_who(tf)=here;
-      t_info(tf)=info;
-      return; }
-  if(class==abstract_t&&id_type(tf)==type_t&&t_class(tf)==synonym_t)
-    { /* this is abstype declaration of already bound typename */
-      arity_check;
-      t_class(tf)=abstract_t;
-      return; }
-  if(id_val(tf)!=UNDEF)
-    { errs=here; nameclash(tf); return; }
-  if(class!=synonym_t)newtyps=add1(tf,newtyps);
-  id_val(tf)=make_typ(arity,class==algebraic_t?make_pn(UNDEF):0,class,info);
-  if(id_type(tf)!=undef_t){ errs=here; respec_error(tf); return; }
-  else addtoenv(tf);
-  id_who(tf)=here;
-  id_type(tf)=type_t;
+void decltype(word tf, word class, word info, word here)  /* declare a user defined type */
+{
+    word arity=0;
+    extern word errs;
+    while(tag[tf]==AP)arity++,tf=hd[tf];
+    if (class==synonym_t && id_type(tf)==type_t && t_class(tf)==abstract_t && t_info(tf)==undef_t) {
+        /* this is binding for declared but not yet bound abstract typename */
+        arity_check;
+        id_who(tf)=here;
+        t_info(tf)=info;
+        return;
+    }
+    if(class==abstract_t&&id_type(tf)==type_t&&t_class(tf)==synonym_t) {
+        /* this is abstype declaration of already bound typename */
+        arity_check;
+        t_class(tf)=abstract_t;
+        return;
+    }
+    if (id_val(tf)!=UNDEF) {
+        errs=here; nameclash(tf); return;
+    }
+    if (class!=synonym_t) newtyps=add1(tf,newtyps);
+    id_val(tf) = make_typ(arity,class==algebraic_t?make_pn(UNDEF):0,class,info);
+    if(id_type(tf)!=undef_t) {
+        errs=here; respec_error(tf); return;
+    } else addtoenv(tf);
+    id_who(tf)=here;
+    id_type(tf)=type_t;
 }
 
 void declconstr(x,n,t)  /* declare x to be constructor number n of type t */
