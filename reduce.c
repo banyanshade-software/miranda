@@ -1930,433 +1930,442 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
             }
             else simpl(bigtostr(lastarg));
             goto DONE;
-    
-case READY(SHOWHEX):
-    UPLEFT;
-    if(tag[lastarg]==DOUBLE)
-    { sprintf(linebuf,"%a",get_dbl(lastarg));
-        hd[e]=I; e=tl[e]=str_conv(linebuf); }
-    else simpl(bigtostrx(lastarg));
-    goto DONE;
-    
-case READY(SHOWOCT):
-    UPLEFT;
-    if(tag[lastarg]==DOUBLE)int_error("showoct");
-    else simpl(bigtostr8(lastarg));
-    goto DONE;
-    
-    /* paradigm for strict monadic arithmetic fns */
-case READY(ARCTAN_FN): /* atan */
-    UPLEFT;
-    errno=0; /* to clear */
-    setdbl(e,atan(force_dbl(lastarg)));
-    if(errno)math_error("atan");
-    goto DONE;
-    
-case READY(EXP_FN): /* exp */
-    UPLEFT;
-    errno=0; /* to clear */
-    setdbl(e,exp(force_dbl(lastarg)));
-    if(errno)math_error("exp");
-    goto DONE;
-    
-case READY(ENTIER_FN): /* floor */
-    UPLEFT;
-    if(tag[lastarg]==INT)simpl(lastarg);
-    else simpl(dbltobig(get_dbl(lastarg)));
-    goto DONE;
-    
-case READY(LOG_FN): /* log */
-    UPLEFT;
-    if(tag[lastarg]==INT)setdbl(e,biglog(lastarg));
-    else { errno=0; /* to clear */
-        fa=force_dbl(lastarg);
-        setdbl(e,log(fa));
-        if(errno)math_error("log"); }
-    goto DONE;
-    
-case READY(LOG10_FN): /* log10 */
-    UPLEFT;
-    if(tag[lastarg]==INT)setdbl(e,biglog10(lastarg));
-    else { errno=0; /* to clear */
-        fa=force_dbl(lastarg);
-        setdbl(e,log10(fa));
-        if(errno)math_error("log10"); }
-    goto DONE;
-    
-case READY(SIN_FN): /* sin */
-    UPLEFT;
-    errno=0; /* to clear */
-    setdbl(e,sin(force_dbl(lastarg)));
-    if(errno)math_error("sin");
-    goto DONE;
-    
-case READY(COS_FN): /* cos */
-    UPLEFT;
-    errno=0; /* to clear */
-    setdbl(e,cos(force_dbl(lastarg)));
-    if(errno)math_error("cos");
-    goto DONE;
-    
-case READY(SQRT_FN): /* sqrt */
-    UPLEFT;
-    fa=force_dbl(lastarg);
-    if(fa<0.0)math_error("sqrt");
-    setdbl(e,sqrt(fa));
-    goto DONE;
-    
-    /*  case READY(DIOP):/* paradigm for execution of strict diadic operator
-     RESTORE(e);  /* do not write modified form of operator back into graph
-     GETARG(arg1);
-     GETARG(arg2);
-     hd[e]=I; e=tl[e]=diop(arg1,arg2);
-     goto NEXTREDEX;  */
-    
-    /*  case READY(EQUAL): /* UNUSED
-     RESTORE(e);
-     GETARG(arg1);
-     GETARG(arg2);
-     if(isap(arg1)&&hd[arg1]!=NUMBER&&isap(arg2)&&hd[arg2]!=NUMBER)
-     { /* recurse on components
-     hd[e]=ap2(EQUAL,tl[arg1],tl[arg2]);
-     hd[e]=ap3(EQUAL,hd[arg1],hd[arg2],hd[e]);
-     tl[e]=False;
-     }
-     else { hd[e]=I; e=tl[e]= (eqatom(arg1,arg2)?True:False); }
-     goto NEXTREDEX; */
-    
-case READY(ZIP):  /*  ZIP (a:x) (b:y) => (a,b) : ZIP x y
-                   ZIP x y => []  */
-    RESTORE(e);
-    GETARG(arg1);
-    GETARG(arg2);
-    if(arg1==NIL||arg2==NIL)
-    { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    setcell(CONS,cons(hd[arg1],hd[arg2]),ap2(ZIP,tl[arg1],tl[arg2]));
-    goto DONE;
-    
-case READY(EQ):       /*    EQ x x => True
-                       EQ x y => False
-                       see definition of function "compare" above  */
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)?False:True;  /* ### */
-    goto DONE;
-    
-case READY(NEQ):      /*    NEQ x x => False
-                       NEQ x y => True
-                       see definition of function "compare" above  */
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)?True:False;  /* ### */
-    goto DONE;
-    
-case READY(GR):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)>0?True:False;  /* ### */
-    goto DONE;
-    
-case READY(GRE):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)>=0?True:False;  /* ### */
-    goto DONE;
-    
-case READY(PLUS):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE)
-        setdbl(e,get_dbl(arg1)+force_dbl(lastarg)); else
+            
+        case READY(SHOWHEX):
+            UPLEFT;
             if(tag[lastarg]==DOUBLE)
-                setdbl(e,bigtodbl(arg1)+get_dbl(lastarg));
-            else simpl(bigplus(arg1,lastarg));
-    goto DONE;
-    
-case READY(MINUS):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE)
-        setdbl(e,get_dbl(arg1)-force_dbl(lastarg)); else
-            if(tag[lastarg]==DOUBLE)
-                setdbl(e,bigtodbl(arg1)-get_dbl(lastarg));
-            else simpl(bigsub(arg1,lastarg));
-    goto DONE;
-    
-case READY(TIMES):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE)
-        setdbl(e,get_dbl(arg1)*force_dbl(lastarg)); else
-            if(tag[lastarg]==DOUBLE)
-                setdbl(e,bigtodbl(arg1)*get_dbl(lastarg));
-            else simpl(bigtimes(arg1,lastarg));
-    goto DONE;
-    
-case READY(INTDIV):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE||tag[lastarg]==DOUBLE)int_error("div");
-    if(bigzero(lastarg))div_error();  /* build into bigmod ? */
-    simpl(bigdiv(arg1,lastarg));
-    goto DONE;
-    
-case READY(FDIV):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    /* experiment, suppressed
-     if(tag[lastarg]==INT&&tag[arg1]==INT&&!bigzero(lastarg))
-     { extern word b_rem;
-     int d = bigdiv(arg1,lastarg);
-     if(bigzero(b_rem)){ simpl(d); goto DONE; }
-     } /* makes a/b integer if a, b integers dividing exactly */
-    fa=force_dbl(arg1);
-    fb=force_dbl(lastarg);
-    if(fb==0.0)div_error();
-    setdbl(e,fa/fb);
-    goto DONE;
-    
-case READY(MOD):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE||tag[lastarg]==DOUBLE)int_error("mod");
-    if(bigzero(lastarg))div_error();  /* build into bigmod ? */
-    simpl(bigmod(arg1,lastarg));
-    goto DONE;
-    
-case READY(POWER):
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[lastarg]==DOUBLE)
-    { fa=force_dbl(arg1);
-        if(fa<0.0)errno=EDOM,math_error("^");
-        fb=get_dbl(lastarg); }else
+            { sprintf(linebuf,"%a",get_dbl(lastarg));
+                hd[e]=I; e=tl[e]=str_conv(linebuf); }
+            else simpl(bigtostrx(lastarg));
+            goto DONE;
+            
+        case READY(SHOWOCT):
+            UPLEFT;
+            if(tag[lastarg]==DOUBLE)int_error("showoct");
+            else simpl(bigtostr8(lastarg));
+            goto DONE;
+            
+            /* paradigm for strict monadic arithmetic fns */
+        case READY(ARCTAN_FN): /* atan */
+            UPLEFT;
+            errno=0; /* to clear */
+            setdbl(e,atan(force_dbl(lastarg)));
+            if(errno)math_error("atan");
+            goto DONE;
+            
+        case READY(EXP_FN): /* exp */
+            UPLEFT;
+            errno=0; /* to clear */
+            setdbl(e,exp(force_dbl(lastarg)));
+            if(errno)math_error("exp");
+            goto DONE;
+            
+        case READY(ENTIER_FN): /* floor */
+            UPLEFT;
+            if(tag[lastarg]==INT)simpl(lastarg);
+            else simpl(dbltobig(get_dbl(lastarg)));
+            goto DONE;
+            
+        case READY(LOG_FN): /* log */
+            UPLEFT;
+            if(tag[lastarg]==INT)setdbl(e,biglog(lastarg));
+            else { errno=0; /* to clear */
+                fa=force_dbl(lastarg);
+                setdbl(e,log(fa));
+                if(errno)math_error("log"); }
+            goto DONE;
+            
+        case READY(LOG10_FN): /* log10 */
+            UPLEFT;
+            if(tag[lastarg]==INT)setdbl(e,biglog10(lastarg));
+            else { errno=0; /* to clear */
+                fa=force_dbl(lastarg);
+                setdbl(e,log10(fa));
+                if(errno)math_error("log10"); }
+            goto DONE;
+            
+        case READY(SIN_FN): /* sin */
+            UPLEFT;
+            errno=0; /* to clear */
+            setdbl(e,sin(force_dbl(lastarg)));
+            if(errno)math_error("sin");
+            goto DONE;
+            
+        case READY(COS_FN): /* cos */
+            UPLEFT;
+            errno=0; /* to clear */
+            setdbl(e,cos(force_dbl(lastarg)));
+            if(errno)math_error("cos");
+            goto DONE;
+            
+        case READY(SQRT_FN): /* sqrt */
+            UPLEFT;
+            fa=force_dbl(lastarg);
+            if(fa<0.0)math_error("sqrt");
+            setdbl(e,sqrt(fa));
+            goto DONE;
+            
+            /*  case READY(DIOP):/* paradigm for execution of strict diadic operator
+             RESTORE(e);  /* do not write modified form of operator back into graph
+             GETARG(arg1);
+             GETARG(arg2);
+             hd[e]=I; e=tl[e]=diop(arg1,arg2);
+             goto NEXTREDEX;  */
+            
+            /*  case READY(EQUAL): /* UNUSED
+             RESTORE(e);
+             GETARG(arg1);
+             GETARG(arg2);
+             if(isap(arg1)&&hd[arg1]!=NUMBER&&isap(arg2)&&hd[arg2]!=NUMBER)
+             { /* recurse on components
+             hd[e]=ap2(EQUAL,tl[arg1],tl[arg2]);
+             hd[e]=ap3(EQUAL,hd[arg1],hd[arg2],hd[e]);
+             tl[e]=False;
+             }
+             else { hd[e]=I; e=tl[e]= (eqatom(arg1,arg2)?True:False); }
+             goto NEXTREDEX; */
+            
+        case READY(ZIP):  /*  ZIP (a:x) (b:y) => (a,b) : ZIP x y
+                           ZIP x y => []  */
+            RESTORE(e);
+            GETARG(arg1);
+            GETARG(arg2);
+            if(arg1==NIL||arg2==NIL)
+            { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+            setcell(CONS,cons(hd[arg1],hd[arg2]),ap2(ZIP,tl[arg1],tl[arg2]));
+            goto DONE;
+            
+        case READY(EQ):       /*    EQ x x => True
+                               EQ x y => False
+                               see definition of function "compare" above  */
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            hd[e]=I; e=tl[e]=compare(arg1,lastarg)?False:True;  /* ### */
+            goto DONE;
+            
+        case READY(NEQ):      /*    NEQ x x => False
+                               NEQ x y => True
+                               see definition of function "compare" above  */
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            hd[e]=I; e=tl[e]=compare(arg1,lastarg)?True:False;  /* ### */
+            goto DONE;
+            
+        case READY(GR):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            hd[e]=I; e=tl[e]=compare(arg1,lastarg)>0?True:False;  /* ### */
+            goto DONE;
+            
+        case READY(GRE):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            hd[e]=I; e=tl[e]=compare(arg1,lastarg)>=0?True:False;  /* ### */
+            goto DONE;
+            
+        case READY(PLUS):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
             if(tag[arg1]==DOUBLE)
-                fa=get_dbl(arg1),fb=bigtodbl(lastarg); else
-                    if(neg(lastarg))
-                        fa=bigtodbl(arg1),fb=bigtodbl(lastarg);
-                    else { simpl(bigpow(arg1,lastarg));
-                        goto DONE; }
-    errno=0; /* to clear */
-    setdbl(e,pow(fa,fb));
-    if(errno)math_error("power");
-    goto DONE;
-    
-case READY(SHOWSCALED): /* SHOWSCALED precision number => numeral */
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE)
-        int_error("showscaled");
-    arg1=getsmallint(arg1);
-    (void)sprintf(linebuf,"%.*e",(int)arg1,force_dbl(lastarg));
-    hd[e]=I; e=tl[e]=str_conv(linebuf);
-    goto DONE;
-    
-case READY(SHOWFLOAT): /* SHOWFLOAT precision number => numeral */
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(tag[arg1]==DOUBLE)
-        int_error("showfloat");
-    arg1=getsmallint(arg1);
-    (void)sprintf(linebuf,"%.*f",(int)arg1,force_dbl(lastarg));
-    hd[e]=I; e=tl[e]=str_conv(linebuf);
-    goto DONE;
-    
+                setdbl(e,get_dbl(arg1)+force_dbl(lastarg)); else
+                    if(tag[lastarg]==DOUBLE)
+                        setdbl(e,bigtodbl(arg1)+get_dbl(lastarg));
+                    else simpl(bigplus(arg1,lastarg));
+            goto DONE;
+            
+        case READY(MINUS):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[arg1]==DOUBLE)
+                setdbl(e,get_dbl(arg1)-force_dbl(lastarg)); else
+                    if(tag[lastarg]==DOUBLE)
+                        setdbl(e,bigtodbl(arg1)-get_dbl(lastarg));
+                    else simpl(bigsub(arg1,lastarg));
+            goto DONE;
+            
+        case READY(TIMES):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[arg1]==DOUBLE)
+                setdbl(e,get_dbl(arg1)*force_dbl(lastarg)); else
+                    if(tag[lastarg]==DOUBLE)
+                        setdbl(e,bigtodbl(arg1)*get_dbl(lastarg));
+                    else simpl(bigtimes(arg1,lastarg));
+            goto DONE;
+            
+        case READY(INTDIV):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[arg1]==DOUBLE||tag[lastarg]==DOUBLE)int_error("div");
+            if(bigzero(lastarg))div_error();  /* build into bigmod ? */
+            simpl(bigdiv(arg1,lastarg));
+            goto DONE;
+            
+        case READY(FDIV):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            /* experiment, suppressed
+             if(tag[lastarg]==INT&&tag[arg1]==INT&&!bigzero(lastarg))
+             { extern word b_rem;
+             int d = bigdiv(arg1,lastarg);
+             if(bigzero(b_rem)){ simpl(d); goto DONE; }
+             } /* makes a/b integer if a, b integers dividing exactly */
+            fa=force_dbl(arg1);
+            fb=force_dbl(lastarg);
+            if(fb==0.0)div_error();
+            setdbl(e,fa/fb);
+            goto DONE;
+            
+        case READY(MOD):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[arg1]==DOUBLE||tag[lastarg]==DOUBLE)int_error("mod");
+            if(bigzero(lastarg))div_error();  /* build into bigmod ? */
+            simpl(bigmod(arg1,lastarg));
+            goto DONE;
+            
+        case READY(POWER):
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[lastarg]==DOUBLE)
+            { fa=force_dbl(arg1);
+                if(fa<0.0)errno=EDOM,math_error("^");
+                fb=get_dbl(lastarg); }else
+                    if(tag[arg1]==DOUBLE)
+                        fa=get_dbl(arg1),fb=bigtodbl(lastarg); else
+                            if(neg(lastarg))
+                                fa=bigtodbl(arg1),fb=bigtodbl(lastarg);
+                            else { simpl(bigpow(arg1,lastarg));
+                                goto DONE; }
+            errno=0; /* to clear */
+            setdbl(e,pow(fa,fb));
+            if(errno)math_error("power");
+            goto DONE;
+            
+        case READY(SHOWSCALED): /* SHOWSCALED precision number => numeral */
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[arg1]==DOUBLE)
+                int_error("showscaled");
+            arg1=getsmallint(arg1);
+            (void)sprintf(linebuf,"%.*e",(int)arg1,force_dbl(lastarg));
+            hd[e]=I; e=tl[e]=str_conv(linebuf);
+            goto DONE;
+            
+        case READY(SHOWFLOAT): /* SHOWFLOAT precision number => numeral */
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(tag[arg1]==DOUBLE)
+                int_error("showfloat");
+            arg1=getsmallint(arg1);
+            (void)sprintf(linebuf,"%.*f",(int)arg1,force_dbl(lastarg));
+            hd[e]=I; e=tl[e]=str_conv(linebuf);
+            goto DONE;
+            
 #define coerce_dbl(x)  tag[x]==DOUBLE?(x):sto_dbl(bigtodbl(x))
+            
+        case READY(STEP):  /* STEP i a => GENSEQ (i,NIL) a */
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            hd[e]=ap(GENSEQ,cons(arg1,NIL));
+            goto NEXTREDEX;
+            
+        case READY(MERGE): /* MERGE [] y => y
+                            MERGE (a:x) [] => a:x
+                            MERGE (a:x) (b:y) => a:MERGE x (b:y), if a<=b
+                            => b:MERGE (a:x) y, otherwise */
+            RESTORE(e);
+            GETARG(arg1);
+            UPLEFT;
+            if(arg1==NIL)simpl(lastarg); else
+                if(lastarg==NIL)simpl(arg1); else
+                    if(compare(hd[arg1]=reduce(hd[arg1]),
+                               hd[lastarg]=reduce(hd[lastarg]))<=0)  /* ### */
+                        setcell(CONS,hd[arg1],ap2(MERGE,tl[arg1],lastarg));
+                    else setcell(CONS,hd[lastarg],ap2(MERGE,tl[lastarg],arg1));
+            goto DONE;
+            
+        case READY(STEPUNTIL):  /* STEPUNTIL i a b => GENSEQ (i,b) a */
+            RESTORE(e);
+            GETARG(arg1);
+            GETARG(arg2);
+            UPLEFT;
+            hd[e]=ap(GENSEQ,cons(arg1,arg2));
+            if(tag[arg1]==INT?poz(arg1):get_dbl(arg1)>=0.0)
+                tag[tl[hd[e]]]=AP; /* hack to record sign of step - see GENSEQ */
+            goto NEXTREDEX;
+            
+        case READY(Ush):
+            /* Ush (k f1...fn) p (k x1...xn)
+             => "k"++' ':f1 x1 ...++' ':fn xn, p='\0'
+             => "(k"++' ':f1 x1 ...++' ':fn xn++")", p='\1'
+             Ush (k f1...fn) p other => FAIL  */
+            RESTORE(e);
+            GETARG(arg1);
+            GETARG(arg2);
+            GETARG(arg3);
+            if(constr_tag(head(arg1))!=constr_tag(head(arg3)))
+            { hd[e]=I;
+                e=tl[e]=FAIL;
+                goto DONE; }  /* result is string, so cannot be more args */
+            if(tag[arg1]==CONSTRUCTOR) {/* don't parenthesise atom */
+                hd[e]=I;
+                if(suppressed(arg1))
+                    e=tl[e]=str_conv("<unprintable>");
+                else e=tl[e]=str_conv(constr_name(arg1));
+                goto DONE; }
+            hold=arg2?cons(')',NIL):NIL;
+            while(tag[arg1]!=CONSTRUCTOR)
+                hold=cons(' ',ap2(APPEND,ap(tl[arg1],tl[arg3]),hold)),
+                arg1=hd[arg1],arg3=hd[arg3];
+            if(suppressed(arg1))
+            { hd[e]=I; e=tl[e]=str_conv("<unprintable>"); goto DONE; }
+            hold=ap2(APPEND,str_conv(constr_name(arg1)),hold);
+            if(arg2)
+            { setcell(CONS,'(',hold); goto DONE; }
+            else { hd[e]=I; e=tl[e]=hold; goto NEXTREDEX; }
+            
+        default: fprintf(stderr,"\nimpossible event in reduce ("),
+            out(stderr,e),fprintf(stderr,")\n"),
+            exit(1);
+            return(0); /* proforma only - unreachable */
+    } /* end of "ready" switch */
     
-case READY(STEP):  /* STEP i a => GENSEQ (i,NIL) a */
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    hd[e]=ap(GENSEQ,cons(arg1,NIL));
-    goto NEXTREDEX;
-    
-case READY(MERGE): /* MERGE [] y => y
-                    MERGE (a:x) [] => a:x
-                    MERGE (a:x) (b:y) => a:MERGE x (b:y), if a<=b
-                    => b:MERGE (a:x) y, otherwise */
-    RESTORE(e);
-    GETARG(arg1);
-    UPLEFT;
-    if(arg1==NIL)simpl(lastarg); else
-        if(lastarg==NIL)simpl(arg1); else
-            if(compare(hd[arg1]=reduce(hd[arg1]),
-                       hd[lastarg]=reduce(hd[lastarg]))<=0)  /* ### */
-                setcell(CONS,hd[arg1],ap2(MERGE,tl[arg1],lastarg));
-            else setcell(CONS,hd[lastarg],ap2(MERGE,tl[lastarg],arg1));
-    goto DONE;
-    
-case READY(STEPUNTIL):  /* STEPUNTIL i a b => GENSEQ (i,b) a */
-    RESTORE(e);
-    GETARG(arg1);
-    GETARG(arg2);
-    UPLEFT;
-    hd[e]=ap(GENSEQ,cons(arg1,arg2));
-    if(tag[arg1]==INT?poz(arg1):get_dbl(arg1)>=0.0)
-        tag[tl[hd[e]]]=AP; /* hack to record sign of step - see GENSEQ */
-    goto NEXTREDEX;
-    
-case READY(Ush):
-    /* Ush (k f1...fn) p (k x1...xn)
-     => "k"++' ':f1 x1 ...++' ':fn xn, p='\0'
-     => "(k"++' ':f1 x1 ...++' ':fn xn++")", p='\1'
-     Ush (k f1...fn) p other => FAIL  */
-    RESTORE(e);
-    GETARG(arg1);
-    GETARG(arg2);
-    GETARG(arg3);
-    if(constr_tag(head(arg1))!=constr_tag(head(arg3)))
-    { hd[e]=I;
-        e=tl[e]=FAIL;
-        goto DONE; }  /* result is string, so cannot be more args */
-    if(tag[arg1]==CONSTRUCTOR) /* don't parenthesise atom */
-    { hd[e]=I;
-        if(suppressed(arg1))
-            e=tl[e]=str_conv("<unprintable>");
-        else e=tl[e]=str_conv(constr_name(arg1));
-        goto DONE; }
-    hold=arg2?cons(')',NIL):NIL;
-    while(tag[arg1]!=CONSTRUCTOR)
-        hold=cons(' ',ap2(APPEND,ap(tl[arg1],tl[arg3]),hold)),
-        arg1=hd[arg1],arg3=hd[arg3];
-    if(suppressed(arg1))
-    { hd[e]=I; e=tl[e]=str_conv("<unprintable>"); goto DONE; }
-    hold=ap2(APPEND,str_conv(constr_name(arg1)),hold);
-    if(arg2)
-    { setcell(CONS,'(',hold); goto DONE; }
-    else { hd[e]=I; e=tl[e]=hold; goto NEXTREDEX; }
-    
-default: fprintf(stderr,"\nimpossible event in reduce ("),
-    out(stderr,e),fprintf(stderr,")\n"),
-    exit(1);
-    return(0); /* proforma only - unreachable */
-} /* end of "ready" switch */
-
 }  /* end of reduce */
 
-int memclass(c,x) /* is char c in list x (may include ranges) */
-int c; word x;
-{ while(x!=NIL)
-{ if(hd[x]==DOTDOT)
-{ x=tl[x];
-    if(hd[x]<=c&&c<=hd[tl[x]])return(1);
-    x=tl[x]; }
-else if(c==hd[x])return(1);
-    x=tl[x]; }
+int memclass(int c, word x) /* is char c in list x (may include ranges) */
+{
+    while(x!=NIL) {
+        if(hd[x]==DOTDOT) {
+            x=tl[x];
+            if(hd[x]<=c&&c<=hd[tl[x]])return(1);
+            x=tl[x];
+        }
+        else if (c==hd[x]) return(1);
+        x=tl[x];
+    }
     return(0);
 }
 
-void lexfail(x)  /* x is known to be a non-empty string (see LEX_RPT) */
-word x;
-{ int i=24;
-  fprintf(stderr,"\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
-  while(i--&&x!=NIL&&0<=lh(x)&&lh(x)<=255)
-     fprintf(stderr,"%s",charname(lh(x))),
-     x=tl[x];
-  fprintf(stderr,"%s\"\n",x==NIL?"":"...");
-  outstats();
-  exit(1);
+void lexfail(word x)  /* x is known to be a non-empty string (see LEX_RPT) */
+{
+    int i=24;
+    fprintf(stderr,"\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
+    while(i--&&x!=NIL&&0<=lh(x)&&lh(x)<=255)
+        fprintf(stderr,"%s",charname(lh(x))),
+        x=tl[x];
+    fprintf(stderr,"%s\"\n",x==NIL?"":"...");
+    outstats();
+    exit(1);
 }
 
-word lexstate(x) /* extracts initial state info from list of chars labelled
+word lexstate(word x) /* extracts initial state info from list of chars labelled
                by LEX_COUNT - x is evaluated and known to be non-empty */
-word x;
-{ x = hd[hd[x]]; /* count field of first char */
-  return(cons(sto_int(x>>8),stosmallint(x&255)));
+{
+    x = hd[hd[x]]; /* count field of first char */
+    return(cons(sto_int(x>>8),stosmallint(x&255)));
 }
 
-word piperrmess(pid)
-word pid;
-{ return(str_conv(pid== -1?"cannot create process\n":"cannot open pipe\n"));
+word piperrmess(word pid)
+{
+    return(str_conv(pid== -1?"cannot create process\n":"cannot open pipe\n"));
 }
 
-word g_residue(toks2)  /* remainder of token stream from last token examined */
-word toks2;
-{ word toks1 = NIL;
-  if(tag[toks2]!=CONS)
+word g_residue(word toks2)  /* remainder of token stream from last token examined */
+{
+    word toks1 = NIL;
+    if(tag[toks2]!=CONS)
     { if(tag[toks2]==AP&&hd[toks2]==I&&tl[toks2]==NIL)
         return(cons(NIL,NIL));
-      return(cons(NIL,toks2)); /*no tokens examined, whole grammar is `error'*/
-      /* fprintf(stderr,"\nimpossible event in g_residue\n"),
-      exit(1); /* grammar fn must have examined >=1 tokens */ }
-  while(tag[tl[toks2]]==CONS)toks1=cons(hd[toks2],toks1),toks2=tl[toks2];
-  if(tl[toks2]==NIL||tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL)
-    { toks1=cons(hd[toks2],toks1);
-      return(cons(ap(DESTREV,toks1),NIL)); }
-  return(cons(ap(DESTREV,toks1),toks2));
+        return(cons(NIL,toks2)); /*no tokens examined, whole grammar is `error'*/
+        /* fprintf(stderr,"\nimpossible event in g_residue\n"),
+         exit(1); /* grammar fn must have examined >=1 tokens */ }
+    while (tag[tl[toks2]]==CONS) toks1=cons(hd[toks2],toks1),toks2=tl[toks2];
+    if (tl[toks2]==NIL||tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL) {
+        toks1=cons(hd[toks2],toks1);
+        return(cons(ap(DESTREV,toks1),NIL));
+    }
+    return(cons(ap(DESTREV,toks1),toks2));
 }
 
-word numplus(x,y)
-word x,y;
-{ if(tag[x]==DOUBLE)
-    return(sto_dbl(get_dbl(x)+force_dbl(y)));
-  if(tag[y]==DOUBLE)
-    return(sto_dbl(bigtodbl(x)+get_dbl(y)));
-  return(bigplus(x,y));
+word numplus(word x, word y)
+{
+    if(tag[x]==DOUBLE)
+        return(sto_dbl(get_dbl(x)+force_dbl(y)));
+    if(tag[y]==DOUBLE)
+        return(sto_dbl(bigtodbl(x)+get_dbl(y)));
+    return(bigplus(x,y));
 }
 
-void fn_error(s)
-char *s;
-{ fprintf(stderr,"\nprogram error: %s\n",s);
-  outstats(); 
-  exit(1); }
+void fn_error(char *s)
+{
+    fprintf(stderr,"\nprogram error: %s\n",s);
+    outstats();
+    exit(1);
+}
 
 void getenv_error(char *a)
-{ fprintf(stderr,
-   "program error: getenv(%s): illegal characters in result string\n",a);
-  outstats();
-  exit(1); }
-
-void subs_error()
-{ fn_error("subscript out of range");
+{
+    fprintf(stderr,
+            "program error: getenv(%s): illegal characters in result string\n",a);
+    outstats();
+    exit(1);
 }
 
-void div_error()
-{ fn_error("attempt to divide by zero");
+void subs_error(void)
+{
+    fn_error("subscript out of range");
+}
+
+void div_error(void)
+{
+    fn_error("attempt to divide by zero");
 }
 /* other arithmetic exceptions signal-trapped by fpe_error - see STEER */
 
-void math_error(s)
-char *s;
-{ fprintf(stderr,"\nmath function %serror (%s)\n",
-                 errno==EDOM?"domain ":errno==ERANGE?"range ":"",s);
-  outstats();
-  exit(1);
+void math_error(char *s)
+{
+    fprintf(stderr,"\nmath function %serror (%s)\n",
+            errno==EDOM?"domain ":errno==ERANGE?"range ":"",s);
+    outstats();
+    exit(1);
 }
 
-void int_error(s)
-char *s;
-{ fprintf(stderr,
-  "\nprogram error: fractional number where integer expected (%s)\n",s);
-  outstats();
-  exit(1);
+void int_error(char *s)
+{
+    fprintf(stderr,
+            "\nprogram error: fractional number where integer expected (%s)\n",s);
+    outstats();
+    exit(1);
 }
 
-char *stdname(c)
-int c;
-{ return c==':' ? "$:-" : c=='-' ? "$-" : "$+"; }
+char *stdname(int c)
+{
+    return c==':' ? "$:-" : c=='-' ? "$-" : "$+";
+}
 
-void stdin_error(c)
-int c;
-{ if(stdinuse==c)
+void stdin_error(int c)
+{
+    if(stdinuse==c)
         fprintf(stderr,"program error: duplicate use of %s\n",stdname(c));
-  else fprintf(stderr,"program error: simultaneous use of %s and %s\n",
-          stdname(c), stdname(stdinuse));
-  outstats();
-  exit(1);
+    else fprintf(stderr,"program error: simultaneous use of %s and %s\n",
+                 stdname(c), stdname(stdinuse));
+    outstats();
+    exit(1);
 }
 
 #ifdef BSDCLOCK
@@ -2374,19 +2383,21 @@ clock_t start, end;
 void initclock()
 { 
 #ifndef BSDCLOCK
-start=clock();
+    start=clock();
 #endif
 }
 
-void out_here(f,h,nl)  /* h is fileinfo(scriptname,line_no) */
-FILE *f;
-word h,nl;
-{ extern word errs;
-  if(tag[h]!=FILEINFO)
-    { fprintf(stderr,"(impossible event in outhere)\n"); return; }
-  fprintf(f,"(line %3ld of \"%s\")",tl[h],(char *)hd[h]);
-  if(nl)putc('\n',f); else putc(' ',f);
-  if(compiling&&!errs)errs=h; /* relevant only when called from steer.c */
+void out_here(FILE *f, word h, word nl)  /* h is fileinfo(scriptname,line_no) */
+{
+    extern word errs;
+    if (tag[h]!=FILEINFO) {
+        fprintf(stderr,"(impossible event in outhere)\n");
+        return;
+    }
+    fprintf(f,"(line %3ld of \"%s\")",tl[h],(char *)hd[h]);
+    if (nl) putc('\n',f);
+    else putc(' ',f);
+    if (compiling&&!errs) errs=h; /* relevant only when called from steer.c */
 } /* `soft' error, set errs rather than errline, so not saved in dump */
 
 void outstats()
