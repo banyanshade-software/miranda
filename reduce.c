@@ -252,7 +252,7 @@ word outfilq=NIL; /* list of opened-for-output files */
 closed at end of expression evaluation, because of the fork-exit structure */
 
 /* ### */
-void outf(word e)   /*  e is of the form (Tofile f x)  */
+static void outf(word e)   /*  e is of the form (Tofile f x)  */
 {
     word p=outfilq; /* have we already opened this file for output? */
     char *f=getstring(tl[hd[e]]=reduce(tl[hd[e]]),"Tofile");
@@ -273,7 +273,7 @@ void outf(word e)   /*  e is of the form (Tofile f x)  */
     s_out= stdout;
 }
 
-void apfile(word f) /* open file of name f for appending and add to outfilq */
+static void apfile(word f) /* open file of name f for appending and add to outfilq */
 {
     word p=outfilq; /* is it already open? */
     char *fil=getstring(f,"Appendfile");
@@ -287,7 +287,7 @@ void apfile(word f) /* open file of name f for appending and add to outfilq */
     /* if already there do nothing */
 }
 
-void closefile(word f)  /* remove file of name "f" from outfilq and close stream */
+static void closefile(word f)  /* remove file of name "f" from outfilq and close stream */
 {
     word *p = &outfilq; /* is this file open for output? */
     char *fil = getstring(f,"Closefile");
@@ -349,7 +349,7 @@ word maxrdepth=0,rdepth=0;
 
 /* reduce e to hnf, note that a function in hnf will have head h with
    S<=h<=ERROR all combinators lie in this range see combs.h */
-word reduce(word e)
+static word reduce(word e)
 {
     word s=BACKSTOP,hold,arg1,arg2,arg3;
 #ifdef DEBUG
@@ -1365,11 +1365,14 @@ OPDECODE:
             GETARG(arg1);
             GETARG(arg2);
             upleft;
-            if((lastarg=reduce(lastarg))==NIL||         /* ### */
+            if((lastarg=reduce(lastarg))==NIL ||         /* ### */
                (hd[arg1]==ANTICHARCLASS?memclass(lh(lastarg),tl[arg1])
                 :!memclass(lh(lastarg),arg1))
-               )
-            { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+               ) {
+                hd[e]=I;
+                e=tl[e]=NIL;
+                goto DONE;
+            }
             setcell(CONS,cons(hd[lastarg],arg2),tl[lastarg]);
             goto DONE;
             
@@ -2247,7 +2250,7 @@ DONE:  /* sub task completed -- s is either BACKSTOP or a tailpointer */
     
 }  /* end of reduce */
 
-int memclass(int c, word x) /* is char c in list x (may include ranges) */
+static int memclass(int c, word x) /* is char c in list x (may include ranges) */
 {
     while(x!=NIL) {
         if(hd[x]==DOTDOT) {
@@ -2261,7 +2264,7 @@ int memclass(int c, word x) /* is char c in list x (may include ranges) */
     return(0);
 }
 
-void lexfail(word x)  /* x is known to be a non-empty string (see LEX_RPT) */
+static void lexfail(word x)  /* x is known to be a non-empty string (see LEX_RPT) */
 {
     int i=24;
     fprintf(stderr,"\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
@@ -2273,19 +2276,19 @@ void lexfail(word x)  /* x is known to be a non-empty string (see LEX_RPT) */
     exit(1);
 }
 
-word lexstate(word x) /* extracts initial state info from list of chars labelled
+static word lexstate(word x) /* extracts initial state info from list of chars labelled
                by LEX_COUNT - x is evaluated and known to be non-empty */
 {
     x = hd[hd[x]]; /* count field of first char */
     return(cons(sto_int(x>>8),stosmallint(x&255)));
 }
 
-word piperrmess(word pid)
+static word piperrmess(word pid)
 {
     return(str_conv(pid== -1?"cannot create process\n":"cannot open pipe\n"));
 }
 
-word g_residue(word toks2)  /* remainder of token stream from last token examined */
+static word g_residue(word toks2)  /* remainder of token stream from last token examined */
 {
     word toks1 = NIL;
     if(tag[toks2]!=CONS)
@@ -2302,7 +2305,7 @@ word g_residue(word toks2)  /* remainder of token stream from last token examine
     return(cons(ap(DESTREV,toks1),toks2));
 }
 
-word numplus(word x, word y)
+static word numplus(word x, word y)
 {
     if(tag[x]==DOUBLE)
         return(sto_dbl(get_dbl(x)+force_dbl(y)));
@@ -2311,14 +2314,14 @@ word numplus(word x, word y)
     return(bigplus(x,y));
 }
 
-void fn_error(char *s)
+static void fn_error(char *s)
 {
     fprintf(stderr,"\nprogram error: %s\n",s);
     outstats();
     exit(1);
 }
 
-void getenv_error(char *a)
+static void getenv_error(char *a)
 {
     fprintf(stderr,
             "program error: getenv(%s): illegal characters in result string\n",a);
@@ -2326,12 +2329,12 @@ void getenv_error(char *a)
     exit(1);
 }
 
-void subs_error(void)
+static void subs_error(void)
 {
     fn_error("subscript out of range");
 }
 
-void div_error(void)
+static void div_error(void)
 {
     fn_error("attempt to divide by zero");
 }
@@ -2345,7 +2348,7 @@ void math_error(char *s)
     exit(1);
 }
 
-void int_error(char *s)
+static void int_error(char *s)
 {
     fprintf(stderr,
             "\nprogram error: fractional number where integer expected (%s)\n",s);
@@ -2358,7 +2361,7 @@ char *stdname(int c)
     return c==':' ? "$:-" : c=='-' ? "$-" : "$+";
 }
 
-void stdin_error(int c)
+static void stdin_error(int c)
 {
     if(stdinuse==c)
         fprintf(stderr,"program error: duplicate use of %s\n",stdname(c));
