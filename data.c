@@ -1163,66 +1163,71 @@ extern char *obsuffix;
 int okdump(char *t) /* return 1 if script t has a non-syntax-error dump */
 {
     char obf[120];
-  FILE *f;
-  (void)strcpy(obf,t);
-  (void)strcpy(obf+strlen(obf)-1,obsuffix);
-  f=fopen(obf,"r");
-  if(f&&getc(f)==XVERSION&&getc(f)){fclose(f); return(1); }
-  return(0);
+    FILE *f;
+    (void)strcpy(obf,t);
+    (void)strcpy(obf+strlen(obf)-1,obsuffix);
+    f=fopen(obf,"r");
+    if (f&&getc(f)==XVERSION&&getc(f)){
+        fclose(f); return(1);
+    }
+    return(0);
 }
 
-word geterrlin(t) /* returns errline from dump of t if relevant, 0 otherwise */
-char *t;
-{ char obf[120];
-  extern char *dicp,*dicq;
-  int ch; word el;
-  FILE *f;
-  (void)strcpy(obf,t);
-  (void)strcpy(obf+strlen(obf)-1,obsuffix);
-  if(!(f=fopen(obf,"r")))return(0);
-  if(getc(f)!=XVERSION||(ch=getc(f))&&ch!=1){ fclose(f);
-                                              return(0); }
-  el=getword(f);
-  /* now check this is right dump */
-  setprefix(t);
-  ch=getc(f);
-  dicq=dicp;
-  if(ch!='/')(void)strcpy(dicp,prefix),dicq+=preflen;
-            /* locate wrt current posn */
-  *dicq++ = ch;
-  while((*dicq++ =ch=getc(f))&&ch!=EOF); /* filename */
-  ch=getword(f); /* mtime */
-  if(strcmp(dicp,t)||ch!=fm_time(t))return(0); /* wrong dump */
-  /* this test not foolproof, strictly should extract all files and check
+word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwise */
+{
+    char obf[120];
+    extern char *dicp,*dicq;
+    int ch; word el;
+    FILE *f;
+    (void)strcpy(obf,t);
+    (void)strcpy(obf+strlen(obf)-1,obsuffix);
+    if(!(f=fopen(obf,"r")))return(0);
+    if(getc(f)!=XVERSION||(ch=getc(f))&&ch!=1){
+        fclose(f);
+        return(0);
+    }
+    el=getword(f);
+    /* now check this is right dump */
+    setprefix(t);
+    ch=getc(f);
+    dicq=dicp;
+    if (ch!='/') (void)strcpy(dicp,prefix),dicq+=preflen;
+    /* locate wrt current posn */
+    *dicq++ = ch;
+    while((*dicq++ =ch=getc(f))&&ch!=EOF); /* filename */
+    ch=getword(f); /* mtime */
+    if (strcmp(dicp,t)||ch!=fm_time(t)) return(0); /* wrong dump */
+    /* this test not foolproof, strictly should extract all files and check
      their mtimes, as in undump, but this involves reading the whole dump */
-  return(el);
+    return(el);
 }
 
-word hdsort(x) /* sorts list of name-value pairs on name */
-word x;
-{ word a=NIL,b=NIL,hold=NIL;
-  if(x==NIL)return(NIL);
-  if(tl[x]==NIL)return(x);
-  while(x!=NIL) /* split x */
-       { hold=a,a=cons(hd[x],b),b=hold;
-	 x=tl[x]; }
-  a=hdsort(a),b=hdsort(b);
-  /* now merge two halves back together */
-  while(a!=NIL&&b!=NIL)
-  if(strcmp(get_id(hd[hd[a]]),get_id(hd[hd[b]]))<0)x=cons(hd[a],x),a=tl[a];
-  else x=cons(hd[b],x),b=tl[b];
-  if(a==NIL)a=b;
-  while(a!=NIL)x=cons(hd[a],x),a=tl[a];
-  return(reverse(x));
+static word hdsort(word x) /* sorts list of name-value pairs on name */
+{
+    word a=NIL,b=NIL,hold=NIL;
+    if(x==NIL)return(NIL);
+    if(tl[x]==NIL)return(x);
+    while(x!=NIL) { /* split x */
+        hold=a,a=cons(hd[x],b),b=hold;
+        x=tl[x];
+    }
+    a=hdsort(a),b=hdsort(b);
+    /* now merge two halves back together */
+    while(a!=NIL&&b!=NIL)
+        if (strcmp(get_id(hd[hd[a]]),get_id(hd[hd[b]]))<0) x=cons(hd[a],x),a=tl[a];
+        else x=cons(hd[b],x),b=tl[b];
+    if(a==NIL)a=b;
+    while (a!=NIL) x=cons(hd[a],x),a=tl[a];
+    return(reverse(x));
 }
 
-word append1(x,y) /* rude append */
-word x,y;
-{ word x1=x;
-  if(x1==NIL)return(y);
-  while(tl[x1]!=NIL)x1=tl[x1];
-  tl[x1]=y;
-  return(x);
+word append1(word x, word y) /* rude append */
+{
+    word x1=x;
+    if(x1==NIL)return(y);
+    while(tl[x1]!=NIL)x1=tl[x1];
+    tl[x1]=y;
+    return(x);
 }
 
 /* following is stuff for printing heap objects in readable form - used
@@ -1235,153 +1240,175 @@ word x,y;
 /* WARNING - you should take a copy of the name if you intend to do anything
    with it other than print it immediately */
 
-char *charname(c)
-word c;
-{ static char s[5];
-  switch(c)
-  { case '\n': return("\\n");
-    case '\t': return("\\t");
-    case '\b': return("\\b");
-    case '\f': return("\\f");  /* form feed */
-    case '\r': return("\\r");  /* carriage return */
-    case '\\': return("\\\\");
-    case '\'': return("\\'");
-    case '"': return("\\\"");
-    /* we escape all quotes for safety, since the context could be either
-       character or string quotation */
-    default: if(c<32||c>126)  /* miscellaneous unprintables -- convert to decimal */
-               sprintf(s,"\\%ld",c); 
-               else s[0]=c,s[1]='\0';
-             return(s);
-  }
+char *charname(word c)
+{
+    static char s[5];
+    switch(c) {
+        case '\n': return("\\n");
+        case '\t': return("\\t");
+        case '\b': return("\\b");
+        case '\f': return("\\f");  /* form feed */
+        case '\r': return("\\r");  /* carriage return */
+        case '\\': return("\\\\");
+        case '\'': return("\\'");
+        case '"': return("\\\"");
+            /* we escape all quotes for safety, since the context could be either
+             character or string quotation */
+        default:
+            if(c<32||c>126)  /* miscellaneous unprintables -- convert to decimal */
+                sprintf(s,"\\%ld",c);
+            else s[0]=c,s[1]='\0';
+            return(s);
+    }
 }
 
-void out(f,x)
+void out(FILE *f, word x)
 /* the routines "out","out1","out2" are for printing compiled expressions  */
-FILE *f;
-word x;
 { 
 #ifdef DEBUG
-  static pending=NIL;                                /* cycle trap */
-  word oldpending=pending;                            /* cycle trap */
+    static pending=NIL;                                /* cycle trap */
+    word oldpending=pending;                            /* cycle trap */
 #endif
-  if(x<0||x>TOP){ fprintf(f,"<%ld>",x); return; }
+    if(x<0||x>TOP) { fprintf(f,"<%ld>",x); return; }
 #ifdef DEBUG
-  if(member(pending,x)){ fprintf(f,"..."); return; } /* cycle trap */
-  pending=cons(x,pending);                           /* cycle trap */
+    if(member(pending,x)) { fprintf(f,"..."); return; } /* cycle trap */
+    pending=cons(x,pending);                           /* cycle trap */
 #endif
-  if(tag[x]==LAMBDA)
-  { fprintf(f,"$(");out(f,hd[x]);putc(')',f);
-    out(f,tl[x]); } else
-  { while(tag[x]==CONS)
-    { out1(f,hd[x]);
-      putc(':',f);
-      x= tl[x];
+    if(tag[x]==LAMBDA) {
+        fprintf(f,"$(");out(f,hd[x]);putc(')',f);
+        out(f,tl[x]);
+    } else {
+        while(tag[x]==CONS) {
+            out1(f,hd[x]);
+            putc(':',f);
+            x= tl[x];
 #ifdef DEBUG
-      if(member(pending,x))break;                   /* cycle trap */
-      pending=cons(x,pending);                      /* cycle trap */
+            if(member(pending,x))break;                   /* cycle trap */
+            pending=cons(x,pending);                      /* cycle trap */
 #endif
+        }
+        out1(f,x);
     }
-    out1(f,x); }
 #ifdef DEBUG
-  pending=oldpending;                               /* cycle trap */
+    pending=oldpending;                               /* cycle trap */
 #endif
 } /* warning - cycle trap not interrupt safe if `out' used in compiling
      process */
 
-void out1(f,x)
-FILE *f;
-word x;
-{ if(x<0||x>TOP){ fprintf(f,"<%ld>",x); return; }
-  if(tag[x]==AP)
-    { out1(f,hd[x]);
-      putc(' ',f);
-      out2(f,tl[x]); }
-  else out2(f,x); }
+void out1(FILE *f, word x)
+{
+    if (x<0||x>TOP) { fprintf(f,"<%ld>",x); return; }
+    if(tag[x]==AP) {
+        out1(f,hd[x]);
+        putc(' ',f);
+        out2(f,tl[x]);
+    }
+    else out2(f,x);
+}
 
-void out2(f,x)
-FILE *f;
-word x;
-{ extern char *yysterm[], *cmbnms[];
-  if(x<0||x>TOP){ fprintf(f,"<%ld>",x); return; }
-  if(tag[x]==INT)
-    { if(rest(x))
-	{ x=bigtostr(x);
-	  while(x)putc(hd[x],f),x=tl[x]; }
-      else fprintf(f,"%ld",getsmallint(x));
-      return; }
-  if(tag[x]==DOUBLE){ outr(f,get_dbl(x)); return; }
-  if(tag[x]==ID){ fprintf(f,"%s",get_id(x)); return; }
-  if(x<256){ fprintf(f,"\'%s\'",charname(x)); return; }
-  if(tag[x]==UNICODE){ fprintf(f,"'\%lx'",hd[x]); return; }
-  if(tag[x]==ATOM)
-    { fprintf(f,"%s",x<CMBASE?yysterm[x-256]:
-		     x==True?"True":
-		     x==False?"False":
-		     x==NIL?"[]":
-		     x==NILS?"\"\"":
-		     cmbnms[x-CMBASE]); 
-      return; }
-  if(tag[x]==TCONS||tag[x]==PAIR)
-    { fprintf(f,"(");
-      while(tag[x]==TCONS)
-	   out(f,hd[x]), putc(',',f), x=tl[x];
-      out(f,hd[x]); putc(',',f); out(f,tl[x]);
-      putc(')',f); return; }
-  if(tag[x]==TRIES)
-    { fprintf(f,"TRIES("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
-      putc(')',f); return; }
-  if(tag[x]==LABEL)
-    { fprintf(f,"LABEL("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
-      putc(')',f); return; }
-  if(tag[x]==SHOW)
-    { fprintf(f,"SHOW("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
-      putc(')',f); return; }
-  if(tag[x]==STARTREADVALS)
-    { fprintf(f,"READVALS("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
-      putc(')',f); return; }
-  if(tag[x]==LET)
-    { fprintf(f,"(LET ");
-      out(f,dlhs(hd[x])),fprintf(f,"=");
-      out(f,dval(hd[x])),fprintf(f,";IN ");
-      out(f,tl[x]);
-      fprintf(f,")"); return; }
-  if(tag[x]==LETREC)
-    { word body=tl[x]; 
-      fprintf(f,"(LETREC ");
-      x=hd[x];
-      while(x!=NIL)out(f,dlhs(hd[x])),fprintf(f,"="),
-		   out(f,dval(hd[x])),fprintf(f,";"),x=tl[x];
-      fprintf(f,"IN ");
-      out(f,body);
-      fprintf(f,")"); return; }
-  if(tag[x]==DATAPAIR)
-    { fprintf(f,"DATAPAIR(%s,%ld)",(char *)hd[x],tl[x]);
-      return; }
-  if(tag[x]==FILEINFO)
-    { fprintf(f,"FILEINFO(%s,%ld)",(char *)hd[x],tl[x]);
-      return; }
-  if(tag[x]==CONSTRUCTOR)
-    { fprintf(f,"CONSTRUCTOR(%ld)",hd[x]);
-      return; }
-  if(tag[x]==STRCONS)
-    { fprintf(f,"<$%ld>",hd[x]); return; }/* used as private id's, inter alia*/
-  if(tag[x]==SHARE)
-    { fprintf(f,"(SHARE:"); out(f,hd[x]); fprintf(f,")"); return; }
-  if(tag[x]!=CONS&&tag[x]!=AP&&tag[x]!=LAMBDA)
-  /* not a recognised structure */
-    { fprintf(f,"<%ld|tag=%d>",x,tag[x]); return; }
-  putc('(',f);
-  out(f,x);
-  putc(')',f); }
+void out2(FILE *f, word x)
+{
+    extern char *yysterm[], *cmbnms[];
+    if(x<0||x>TOP){ fprintf(f,"<%ld>",x); return; }
+    if(tag[x]==INT) {
+        if(rest(x)) {
+            x=bigtostr(x);
+            while(x)putc(hd[x],f),x=tl[x];
+        }
+        else fprintf(f,"%ld",getsmallint(x));
+        return;
+    }
+    if(tag[x]==DOUBLE){ outr(f,get_dbl(x)); return; }
+    if(tag[x]==ID){ fprintf(f,"%s",get_id(x)); return; }
+    if(x<256){ fprintf(f,"\'%s\'",charname(x)); return; }
+    if(tag[x]==UNICODE){ fprintf(f,"'\%lx'",hd[x]); return; }
+    if(tag[x]==ATOM) {
+        fprintf(f,"%s",x<CMBASE?yysterm[x-256]:
+                x==True?"True":
+                x==False?"False":
+                x==NIL?"[]":
+                x==NILS?"\"\"":
+                cmbnms[x-CMBASE]);
+        return;
+    }
+    if (tag[x]==TCONS||tag[x]==PAIR) {
+        fprintf(f,"(");
+        while(tag[x]==TCONS)
+            out(f,hd[x]), putc(',',f), x=tl[x];
+        out(f,hd[x]); putc(',',f); out(f,tl[x]);
+        putc(')',f); return;
+    }
+    if (tag[x]==TRIES) {
+        fprintf(f,"TRIES("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
+        putc(')',f);
+        return;
+    }
+    if(tag[x]==LABEL) {
+        fprintf(f,"LABEL("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
+        putc(')',f);
+        return;
+    }
+    if(tag[x]==SHOW) {
+        fprintf(f,"SHOW("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
+        putc(')',f); return;
+    }
+    if(tag[x]==STARTREADVALS) {
+        fprintf(f,"READVALS("); out(f,hd[x]); putc(',',f); out(f,tl[x]);
+        putc(')',f); return;
+    }
+    if(tag[x]==LET) {
+        fprintf(f,"(LET ");
+        out(f,dlhs(hd[x])),fprintf(f,"=");
+        out(f,dval(hd[x])),fprintf(f,";IN ");
+        out(f,tl[x]);
+        fprintf(f,")");
+        return;
+    }
+    if(tag[x]==LETREC)  {
+        word body=tl[x];
+        fprintf(f,"(LETREC ");
+        x=hd[x];
+        while(x!=NIL)out(f,dlhs(hd[x])),fprintf(f,"="),
+            out(f,dval(hd[x])),fprintf(f,";"),x=tl[x];
+        fprintf(f,"IN ");
+        out(f,body);
+        fprintf(f,")");
+        return;
+    }
+    if(tag[x]==DATAPAIR) {
+        fprintf(f,"DATAPAIR(%s,%ld)",(char *)hd[x],tl[x]);
+        return;
+    }
+    if(tag[x]==FILEINFO) {
+        fprintf(f,"FILEINFO(%s,%ld)",(char *)hd[x],tl[x]);
+        return;
+    }
+    if(tag[x]==CONSTRUCTOR) {
+        fprintf(f,"CONSTRUCTOR(%ld)",hd[x]);
+        return;
+    }
+    if(tag[x]==STRCONS) {
+      fprintf(f,"<$%ld>",hd[x]); return;
+    }/* used as private id's, inter alia*/
+    if(tag[x]==SHARE) {
+        fprintf(f,"(SHARE:"); out(f,hd[x]); fprintf(f,")"); return;
+    }
+    if(tag[x]!=CONS&&tag[x]!=AP&&tag[x]!=LAMBDA) {
+        /* not a recognised structure */
+        fprintf(f,"<%ld|tag=%d>",x,tag[x]); return;
+    }
+    putc('(',f);
+    out(f,x);
+    putc(')',f);
+}
 
-void outr(f,r)     /*  prints a number  */
-FILE *f;
-double r;
-{ double p;
-  p= r<0?-r: r;
-  if(p>=1000.0||p<=.001)fprintf(f,"%e",r);
-  else fprintf(f,"%f",r); }
+void outr(FILE *f, double r)     /*  prints a number  */
+{
+    double p;
+    p= r<0?-r: r;
+    if(p>=1000.0||p<=.001)fprintf(f,"%e",r);
+    else fprintf(f,"%f",r);
+}
 
 /*  end of MIRANDA DATA REPRESENTATIONS  */
 
