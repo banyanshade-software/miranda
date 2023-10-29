@@ -1561,274 +1561,284 @@ void loadfile(char *t)
     loading=0;
 } 
 
-word isfreeid(x)
-word x;
-{ return(id_type(x)==type_t?t_class(x)==free_t:id_val(x)==FREE); }
+static word isfreeid(word x)
+{
+    return(id_type(x)==type_t?t_class(x)==free_t:id_val(x)==FREE);
+}
 
 word internals=NIL; /* used by fix/unfixexports, list of names not exported */
 #define paint(x) id_val(x)=ap(EXPORT,id_val(x))
 #define unpainted(x)  (tag[id_val(x)]!=AP||hd[id_val(x)]!=EXPORT)
 #define unpaint(x)  id_val(x)=tl[id_val(x)]
 
-void fixexports()
-{ extern word exports,exportfiles,embargoes,freeids;
-  word e=exports,f;
-  /* printlist("exports: ",e); /* DEBUG */
-  for(;e!=NIL;e=tl[e])paint(hd[e]);
-  internals=NIL;
-  if(exports==NIL&&exportfiles==NIL&&embargoes==NIL) /*no %export in script*/
-    { for(e=freeids;e!=NIL;e=tl[e])
-	 internals=cons(privatise(hd[hd[e]]),internals);
-      for(f=tl[files];f!=NIL;f=tl[f])
-         for(e=fil_defs(hd[f]);e!=NIL;e=tl[e])
-            { if(tag[hd[e]]==ID)
-                internals=cons(privatise(hd[e]),internals); }}
-  else for(f=files;f!=NIL;f=tl[f])
-          for(e=fil_defs(hd[f]);e!=NIL;e=tl[e])
-             { if(tag[hd[e]]==ID&&unpainted(hd[e]))
-                 internals=cons(privatise(hd[e]),internals); }
-  /* optimisation, need not do this to `silent' components - fix later */
-  /*printlist("internals: ",internals); /* DEBUG */
-  for(e=exports;e!=NIL;e=tl[e])unpaint(hd[e]);
+static void fixexports(void)
+{
+    extern word exports,exportfiles,embargoes,freeids;
+    word e=exports,f;
+    /* printlist("exports: ",e); /* DEBUG */
+    for(;e!=NIL;e=tl[e])paint(hd[e]);
+    internals=NIL;
+    if(exports==NIL&&exportfiles==NIL&&embargoes==NIL) { /*no %export in script*/
+        for(e=freeids;e!=NIL;e=tl[e])
+        internals=cons(privatise(hd[hd[e]]),internals);
+        for(f=tl[files];f!=NIL;f=tl[f])
+        for(e=fil_defs(hd[f]);e!=NIL;e=tl[e])  {
+            if(tag[hd[e]]==ID)
+                internals=cons(privatise(hd[e]),internals);
+        }
+    }
+    else for(f=files;f!=NIL;f=tl[f])
+    for(e=fil_defs(hd[f]);e!=NIL;e=tl[e]) {
+        if(tag[hd[e]]==ID&&unpainted(hd[e]))
+            internals=cons(privatise(hd[e]),internals);
+    }
+    /* optimisation, need not do this to `silent' components - fix later */
+    /*printlist("internals: ",internals); /* DEBUG */
+    for(e=exports;e!=NIL;e=tl[e])unpaint(hd[e]);
 } /* may not be interrupt safe, re unload() */
 
-void unfixexports()
-{ /*printlist("internals: ",internals); /* DEBUG */
-  word i=internals;
-  if(mkexports)return; /* in this case don't want internals restored */
-  while(i!=NIL) /* lose */
-       publicise(hd[i]),i=tl[i];
-  internals=NIL;
+void unfixexports(void)
+{
+    /*printlist("internals: ",internals); /* DEBUG */
+    word i=internals;
+    if(mkexports)return; /* in this case don't want internals restored */
+    while(i!=NIL) /* lose */
+        publicise(hd[i]),i=tl[i];
+    internals=NIL;
 } /* may not be interrupt safe, re unload() */
 
-word privatise(x) /* change id to pname, and return new id holding it as value */
-word x;
-{ extern word namebucket[],*pnvec;
-  word n = make_pn(x),h=namebucket[hash(get_id(x))],i;
-  if(id_type(x)==type_t)
-    t_info(x)=cons(datapair(getaka(x),0),get_here(x));
-    /* to assist identification of danging type refs - see typesharing code 
-       in mkincludes */
+static word privatise(word x) /* change id to pname, and return new id holding it as value */
+{
+    extern word namebucket[],*pnvec;
+    word n = make_pn(x),h=namebucket[hash(get_id(x))],i;
+    if(id_type(x)==type_t)
+        t_info(x)=cons(datapair(getaka(x),0),get_here(x));
+    /* to assist identification of danging type refs - see typesharing code
+     in mkincludes */
     /* assumption - nothing looks at the t_info after compilation */
-  if(id_val(x)==UNDEF) /* name specified but not defined */
-    id_val(x)= ap(datapair(getaka(x),0),get_here(x));
+    if(id_val(x)==UNDEF) /* name specified but not defined */
+        id_val(x)= ap(datapair(getaka(x),0),get_here(x));
     /* this will generate sensible error message on attempt to use value
-       see reduction rule for DATAPAIR */
-  pnvec[i=hd[n]]=x;
-  tag[n]=ID;hd[n]=hd[x];
-  tag[x]=STRCONS;hd[x]=i;
-  while(hd[h]!=x)h=tl[h];
-  hd[h]=n;
-  return(n);
+     see reduction rule for DATAPAIR */
+    pnvec[i=hd[n]]=x;
+    tag[n]=ID;hd[n]=hd[x];
+    tag[x]=STRCONS;hd[x]=i;
+    while(hd[h]!=x)h=tl[h];
+    hd[h]=n;
+    return(n);
 } /* WARNING - dependent on internal representation of ids and pnames */
 /* nasty problem - privatisation can screw AKA's */
 
-word publicise(x) /* converse of the above, applied to the new id */
-word x;
-{ extern word namebucket[];
-  word i=id_val(x),h=namebucket[hash(get_id(x))];
-  tag[i]=ID,hd[i]=hd[x]; 
+static word publicise(word x) /* converse of the above, applied to the new id */
+{
+    extern word namebucket[];
+    word i=id_val(x),h=namebucket[hash(get_id(x))];
+    tag[i]=ID,hd[i]=hd[x];
     /* WARNING - USES FACT THAT tl HOLDS VALUE FOR BOTH ID AND PNAME */
-  if(tag[tl[i]]==AP&&tag[hd[tl[i]]]==DATAPAIR)
-    tl[i]=UNDEF; /* undo kludge, see above */
-  while(hd[h]!=x)h=tl[h];
-  hd[h]=i;
-  return(i);
+    if(tag[tl[i]]==AP&&tag[hd[tl[i]]]==DATAPAIR)
+        tl[i]=UNDEF; /* undo kludge, see above */
+    while(hd[h]!=x)h=tl[h];
+    hd[h]=i;
+    return(i);
 }
 
-int sigflag=0;
+static int sigflag=0;
 
-void sigdefer()
-{ /* printf("sigdefer()\n"); /* DEBUG */
-  sigflag=1; } /* delayed signal handler, installed during load_script() */
+static void sigdefer(void)
+{
+    /* printf("sigdefer()\n"); /* DEBUG */
+    sigflag=1;
+} /* delayed signal handler, installed during load_script() */
 
-word mkincludes(includees)
-word includees;
-{ extern word FBS,BAD_DUMP,CLASHES,exportfiles,exports,TORPHANS;
-  word pid,result=NIL,tclashes=NIL;
-  includees=reverse(includees); /* process in order of occurrence in script */
-  if(pid=fork())
-    { /* parent */
-      int status;
-      if(pid==-1)
-	{ perror("UNIX error - cannot create process"); /* will say why */
-	  if(ideep>6) /* perhaps cyclic %include */
-	  fprintf(stderr,"error occurs %d deep in %%include files\n",ideep);
-	  if(ideep)exit(2);
-	  SYNERR=2;  /* special code to prevent makedump() */
-	  printf("compilation of \"%s\" abandoned\n",current_script);
-	  return(NIL); }
-      while(pid!=wait(&status));
-      if((WEXITSTATUS(status))==2) /* child aborted */
-        if(ideep)exit(2); /* recursive abortion of parent process */
-        else { SYNERR=2; 
-	       printf("compilation of \"%s\" abandoned\n",current_script);
-	       return(NIL); }
-      /* if we get to here child completed normally, so carry on */
+static word mkincludes(word includees)
+{
+    extern word FBS,BAD_DUMP,CLASHES,exportfiles,exports,TORPHANS;
+    word pid,result=NIL,tclashes=NIL;
+    includees=reverse(includees); /* process in order of occurrence in script */
+    if(pid=fork()) { /* parent */
+        int status;
+        if(pid==-1) { perror("UNIX error - cannot create process"); /* will say why */
+            if(ideep>6) /* perhaps cyclic %include */
+                fprintf(stderr,"error occurs %d deep in %%include files\n",ideep);
+            if(ideep)exit(2);
+            SYNERR=2;  /* special code to prevent makedump() */
+            printf("compilation of \"%s\" abandoned\n",current_script);
+            return(NIL);
+        }
+        while(pid!=wait(&status));
+        if((WEXITSTATUS(status))==2) /* child aborted */
+            if(ideep)exit(2); /* recursive abortion of parent process */
+            else { SYNERR=2;
+                printf("compilation of \"%s\" abandoned\n",current_script);
+                return(NIL);
+            }
+        /* if we get to here child completed normally, so carry on */
     }
-  else { /* child does equivalent of `mira -make' on each includee */
-	 extern word oldfiles;
-	 (void)signal(SIGINT,SIG_DFL); /* don't trap interrupts */
-	 ideep++; making=1; make_status=0; echoing=listing=verbosity=magic=0;
-         setjmp(env); /* will return here on blankerr (via reset) */
-	 while(includees!=NIL&&!make_status) /* stop at first bad includee */
-	      { undump((char *)hd[hd[hd[includees]]]);
-	        if(ND!=NIL||files==NIL&&oldfiles!=NIL)make_status=1;
-	        /* any errors in dump? */
-		includees=tl[includees];
-	      } /* obscure bug - undump above can reinvoke compiler, which
-		   side effects compiler variable `includees' - to fix this 
-		   had to make sure child is holding local copy of includees*/
-	 exit(make_status); }
-  sigflag=0;
-  for(;includees!=NIL;includees=tl[includees])
-     { word x=NIL;
-       sighandler oldsig;
-       FILE *f;
-       char *fn=(char *)hd[hd[hd[includees]]];
-       extern word DETROP,MISSING,ALIASES,TSUPPRESSED;
-       (void)strcpy(dicp,fn);
-       (void)strcpy(dicp+strlen(dicp)-1,obsuffix);
-       if(!making) /* cannot interrupt load_script() */
-	 oldsig=signal(SIGINT,(sighandler)sigdefer);
-       if(f=fopen(dicp,"r"))
-	 x=load_script(f,fn,hd[tl[hd[includees]]],tl[tl[hd[includees]]],0),
-	   fclose(f);
-       ld_stuff=cons(x,ld_stuff);
-       if(!making)(void)signal(SIGINT,oldsig);
-       if(sigflag)sigflag=0,(* oldsig)(); /* take deferred interrupt */
-       if(f&&!BAD_DUMP&&x!=NIL&&ND==NIL&&CLASHES==NIL&&ALIASES==NIL&&
-	  TSUPPRESSED==NIL&&DETROP==NIL&&MISSING==NIL)
-	  /* i.e. if load_script worked ok */
-         { /* stuff here is to share repeated file components
-              issues:
-              Consider only includees (fil_share=1), not insertees.
-              Effect of sharing is to replace value fields in later copies
-              by (pointers to) corresponding ids in first copy - so sharing
-              transmitted thru dumps.  It is illegal to have more than one
-	      copy of a (non-synonym) type in the same scope, even under
-	      different names. */
-	   word y,z;
-	   /* printf("start share analysis\n");  /* DEBUG */
-	   if(TORPHANS)rfl=shunt(x,rfl); /* file has type orphans */
-           for(y=x;y!=NIL;y=tl[y])fil_inodev(hd[y])=inodev(get_fil(hd[y]));
-           for(y=x;y!=NIL;y=tl[y])
-	      if(fil_share(hd[y]))
-	      for(z=result;z!=NIL;z=tl[z])
-	         if(fil_share(hd[z])&&same_file(hd[y],hd[z])
-		    &&fil_time(hd[y])==fil_time(hd[z]))
-		   { word p=fil_defs(hd[y]),q=fil_defs(hd[z]);
-		     for(;p!=NIL&&q!=NIL;p=tl[p],q=tl[q])
-			if(tag[hd[p]]==ID)
-			if(id_type(hd[p])==type_t&&
-			   (tag[hd[q]]==ID||tag[pn_val(hd[q])]==ID))
-			  { /* typeclash - record in tclashes */
-			    word w=tclashes;
-		            word orig=tag[hd[q]]==ID?hd[q]:pn_val(hd[q]);
-			    if(t_class(hd[p])==synonym_t)continue;
-			    while(w!=NIL&&((char *)hd[hd[w]]!=get_fil(hd[z])
-					||hd[tl[hd[w]]]!=orig))
-				 w=tl[w];
-		            if(w==NIL)
-			      w=tclashes=cons(strcons(get_fil(hd[z]),
-					       cons(orig,NIL)),tclashes);
-			    tl[tl[hd[w]]]=cons(hd[p],tl[tl[hd[w]]]); 
-			  }
-			else the_val(hd[q])=hd[p];
-			else the_val(hd[p])=hd[q];
-		    /*following test redundant - remove when sure is ok*/
-		    if(p!=NIL||q!=NIL)
-		       fprintf(stderr,"impossible event in mkincludes\n");
-		     /*break; /* z loop -- NO! (see liftbug) */
-		   }
-	   if(member(exportfiles,(word)fn))
-	     { /* move ids of x onto exports */
-	       for(y=x;y!=NIL;y=tl[y])
-	       for(z=fil_defs(hd[y]);z!=NIL;z=tl[z])
-		  if(isvariable(hd[z])) 
-		    tl[exports]=add1(hd[z],tl[exports]);
-		  /* skip pnames, constructors (expanded later) */
-	     }
-	   result=append1(result,x);
-	   /* keep `result' in front-first order */
-	   if(hd[FBS]==NIL)FBS=tl[FBS];
-	   else hd[FBS]=cons(tl[hd[hd[includees]]],hd[FBS]); /* hereinfo */
-	   /* printf("share analysis finished\n");  /* DEBUG */
-	   continue; }
-       /* something wrong - find out what */
-       if(!f)result=cons(make_fil(hd[hd[hd[includees]]],
-			  fm_time(fn),0,NIL),result); else
-       if(x==NIL&&BAD_DUMP!= -2)result=append1(result,oldfiles),oldfiles=NIL;
-       else result=append1(result,x);
-       /* above for benefit of `oldfiles' */
-       /* BAD_DUMP -2 is nameclashes due to aliasing */
-       SYNERR=1; 
-       printf("unsuccessful %%include directive ");
-       sayhere(tl[hd[hd[includees]]],1);
-/*     if(!f)printf("\"%s\" non-existent or unreadable\n",fn), */
-       if(!f)printf("\"%s\" cannot be loaded\n",fn),
-	     CLASHES=DETROP=MISSING=NIL; 
-	     /* just in case not cleared from a previous load_script() */
-       else
-       if(BAD_DUMP== -2)
-	 printlist("aliasing causes nameclashes: ",CLASHES),
-	 CLASHES=NIL; else
-       if(ALIASES!=NIL||TSUPPRESSED!=NIL)
-	 { if(ALIASES!=NIL)
-	   printf("alias fails (name%s not found in file",
-		tl[ALIASES]==NIL?"":"s"),
-	   printlist("): ",ALIASES),ALIASES=NIL; 
-	   if(TSUPPRESSED!=NIL)
-	     { printf("illegal alias (cannot suppress typename%s):",
-		tl[TSUPPRESSED]==NIL?"":"s");
-	       while(TSUPPRESSED!=NIL)
-		    printf(" -%s",get_id(hd[TSUPPRESSED])),
-		    TSUPPRESSED=tl[TSUPPRESSED];
-	       putchar('\n'); }
+    else { /* child does equivalent of `mira -make' on each includee */
+        extern word oldfiles;
+        (void)signal(SIGINT,SIG_DFL); /* don't trap interrupts */
+        ideep++; making=1; make_status=0; echoing=listing=verbosity=magic=0;
+        setjmp(env); /* will return here on blankerr (via reset) */
+        while(includees!=NIL&&!make_status) /* stop at first bad includee */
+        { undump((char *)hd[hd[hd[includees]]]);
+            if(ND!=NIL||files==NIL&&oldfiles!=NIL)make_status=1;
+            /* any errors in dump? */
+            includees=tl[includees];
+        } /* obscure bug - undump above can reinvoke compiler, which
+           side effects compiler variable `includees' - to fix this
+           had to make sure child is holding local copy of includees*/
+        exit(make_status);
+    }
+    sigflag=0;
+    for(;includees!=NIL;includees=tl[includees]) {
+        word x=NIL;
+        sighandler oldsig;
+        FILE *f;
+        char *fn=(char *)hd[hd[hd[includees]]];
+        extern word DETROP,MISSING,ALIASES,TSUPPRESSED;
+        (void)strcpy(dicp,fn);
+        (void)strcpy(dicp+strlen(dicp)-1,obsuffix);
+        if(!making) /* cannot interrupt load_script() */
+            oldsig=signal(SIGINT,(sighandler)sigdefer);
+        if(f=fopen(dicp,"r"))
+            x=load_script(f,fn,hd[tl[hd[includees]]],tl[tl[hd[includees]]],0),
+            fclose(f);
+        ld_stuff=cons(x,ld_stuff);
+        if(!making)(void)signal(SIGINT,oldsig);
+        if(sigflag)sigflag=0,(* oldsig)(); /* take deferred interrupt */
+        if(f&&!BAD_DUMP&&x!=NIL&&ND==NIL&&CLASHES==NIL&&ALIASES==NIL&&
+           TSUPPRESSED==NIL&&DETROP==NIL&&MISSING==NIL) {
+            /* i.e. if load_script worked ok */
+            /* stuff here is to share repeated file components
+             issues:
+             Consider only includees (fil_share=1), not insertees.
+             Effect of sharing is to replace value fields in later copies
+             by (pointers to) corresponding ids in first copy - so sharing
+             transmitted thru dumps.  It is illegal to have more than one
+             copy of a (non-synonym) type in the same scope, even under
+             different names. */
+            word y,z;
+            /* printf("start share analysis\n");  /* DEBUG */
+            if(TORPHANS)rfl=shunt(x,rfl); /* file has type orphans */
+            for(y=x;y!=NIL;y=tl[y])fil_inodev(hd[y])=inodev(get_fil(hd[y]));
+            for(y=x;y!=NIL;y=tl[y])
+            if(fil_share(hd[y]))
+                for(z=result;z!=NIL;z=tl[z])
+            if(fil_share(hd[z])&&same_file(hd[y],hd[z])
+               &&fil_time(hd[y])==fil_time(hd[z])) {
+                word p=fil_defs(hd[y]),q=fil_defs(hd[z]);
+                for(;p!=NIL&&q!=NIL;p=tl[p],q=tl[q])
+                if(tag[hd[p]]==ID)
+                    if(id_type(hd[p])==type_t&&
+                       (tag[hd[q]]==ID||tag[pn_val(hd[q])]==ID)) { /* typeclash - record in tclashes */
+                        word w=tclashes;
+                        word orig=tag[hd[q]]==ID?hd[q]:pn_val(hd[q]);
+                        if(t_class(hd[p])==synonym_t)continue;
+                        while(w!=NIL&&((char *)hd[hd[w]]!=get_fil(hd[z])
+                                       ||hd[tl[hd[w]]]!=orig))
+                            w=tl[w];
+                        if(w==NIL)
+                            w=tclashes=cons(strcons(get_fil(hd[z]),
+                                                    cons(orig,NIL)),tclashes);
+                        tl[tl[hd[w]]]=cons(hd[p],tl[tl[hd[w]]]);
+                    }
+                    else the_val(hd[q])=hd[p];
+                    else the_val(hd[p])=hd[q];
+                /*following test redundant - remove when sure is ok*/
+                if(p!=NIL||q!=NIL)
+                    fprintf(stderr,"impossible event in mkincludes\n");
+                /*break; /* z loop -- NO! (see liftbug) */
+            }
+            if(member(exportfiles,(word)fn)) { /* move ids of x onto exports */
+                for(y=x;y!=NIL;y=tl[y])
+                for(z=fil_defs(hd[y]);z!=NIL;z=tl[z])
+                if(isvariable(hd[z]))
+                    tl[exports]=add1(hd[z],tl[exports]);
+                /* skip pnames, constructors (expanded later) */
+            }
+            result=append1(result,x);
+            /* keep `result' in front-first order */
+            if(hd[FBS]==NIL)FBS=tl[FBS];
+            else hd[FBS]=cons(tl[hd[hd[includees]]],hd[FBS]); /* hereinfo */
+            /* printf("share analysis finished\n");  /* DEBUG */
+            continue;
+        }
+        /* something wrong - find out what */
+        if(!f)result=cons(make_fil(hd[hd[hd[includees]]],
+                                   fm_time(fn),0,NIL),result);
+        else if(x==NIL&&BAD_DUMP!= -2)result=append1(result,oldfiles),oldfiles=NIL;
+        else result=append1(result,x);
+        /* above for benefit of `oldfiles' */
+        /* BAD_DUMP -2 is nameclashes due to aliasing */
+        SYNERR=1;
+        printf("unsuccessful %%include directive ");
+        sayhere(tl[hd[hd[includees]]],1);
+        /*     if(!f)printf("\"%s\" non-existent or unreadable\n",fn), */
+        if(!f)printf("\"%s\" cannot be loaded\n",fn),
+            CLASHES=DETROP=MISSING=NIL;
+        /* just in case not cleared from a previous load_script() */
+        else if(BAD_DUMP== -2)
+            printlist("aliasing causes nameclashes: ",CLASHES),
+            CLASHES=NIL;
+        else if(ALIASES!=NIL||TSUPPRESSED!=NIL) {
+            if(ALIASES!=NIL)
+                printf("alias fails (name%s not found in file",
+                       tl[ALIASES]==NIL?"":"s"),
+                printlist("): ",ALIASES),ALIASES=NIL;
+            if(TSUPPRESSED!=NIL)  {
+                printf("illegal alias (cannot suppress typename%s):",
+                       tl[TSUPPRESSED]==NIL?"":"s");
+                while(TSUPPRESSED!=NIL)
+                    printf(" -%s",get_id(hd[TSUPPRESSED])),
+                    TSUPPRESSED=tl[TSUPPRESSED];
+                putchar('\n');
+            }
 	 /* if -typename allowed, remember to look for type orphans */
-	 }else
-       if(BAD_DUMP)printf("\"%s\" has bad data in dump file\n",fn); else
-       if(x==NIL)printf("\"%s\" contains syntax error\n",fn); else
-       if(ND!=NIL)
-	 printf("\"%s\" contains undefined names or type errors\n",fn);
-       if(ND==NIL&&CLASHES!=NIL) /* can have this and failed aliasing */
-         printf("\"%s\" ",fn),printlist("causes nameclashes: ",CLASHES);
-       while(DETROP!=NIL&&tag[hd[DETROP]]==CONS)
-	    { word fa=hd[tl[hd[DETROP]]],ta=tl[tl[hd[DETROP]]];
-	      char *pn=get_id(hd[hd[DETROP]]);
-	      if(fa== -1||ta== -1)
-		printf("`%s' has binding of wrong kind ",pn),
-	        printf(fa== -1?"(should be \"= value\" not \"== type\")\n"
-	                  :"(should be \"== type\" not \"= value\")\n");
-	      else
-	        printf("`%s' has == binding of wrong arity ",pn),
-	        printf("(formal has arity %ld, actual has arity %ld)\n",fa,ta);
-	      DETROP=tl[DETROP]; }
-       if(DETROP!=NIL)
-	 printf("illegal parameter binding (name%s not %%free in file",
-	                                        tl[DETROP]==NIL?"":"s"),
-	 printlist("): ",DETROP),DETROP=NIL; 
-       if(MISSING!=NIL)
-	 printf("missing parameter binding%s: ",tl[MISSING]==NIL?"":"s");
-       while(MISSING!=NIL)
+        } else if(BAD_DUMP)printf("\"%s\" has bad data in dump file\n",fn);
+        else if(x==NIL)printf("\"%s\" contains syntax error\n",fn);
+        else if(ND!=NIL)
+            printf("\"%s\" contains undefined names or type errors\n",fn);
+        if(ND==NIL&&CLASHES!=NIL) /* can have this and failed aliasing */
+            printf("\"%s\" ",fn),printlist("causes nameclashes: ",CLASHES);
+        while(DETROP!=NIL&&tag[hd[DETROP]]==CONS)  {
+            word fa=hd[tl[hd[DETROP]]],ta=tl[tl[hd[DETROP]]];
+            char *pn=get_id(hd[hd[DETROP]]);
+            if(fa== -1||ta== -1)
+                printf("`%s' has binding of wrong kind ",pn),
+                printf(fa== -1?"(should be \"= value\" not \"== type\")\n"
+                       :"(should be \"== type\" not \"= value\")\n");
+            else
+                printf("`%s' has == binding of wrong arity ",pn),
+                printf("(formal has arity %ld, actual has arity %ld)\n",fa,ta);
+            DETROP=tl[DETROP];
+        }
+        if(DETROP!=NIL)
+            printf("illegal parameter binding (name%s not %%free in file",
+                   tl[DETROP]==NIL?"":"s"),
+            printlist("): ",DETROP),DETROP=NIL;
+        if(MISSING!=NIL)
+            printf("missing parameter binding%s: ",tl[MISSING]==NIL?"":"s");
+        while(MISSING!=NIL)
             printf("%s%s",(char *)hd[hd[MISSING]],tl[MISSING]==NIL?";\n":","),
             MISSING=tl[MISSING];
-       printf("compilation abandoned\n");
-       stackp=dstack; /* in case of BAD_DUMP */
-       return(result); } /* for unload() */
-  if(tclashes!=NIL)
-    { printf("TYPECLASH - the following type%s multiply named:\n",
-	      tl[tclashes]==NIL?" is":"s are");
-      /* structure of tclashes is list of strcons(filname,list-of-ids) */
-      for(;tclashes!=NIL;tclashes=tl[tclashes])
-	 { printf("\'%s\' of file \"%s\", as: ",
-		  getaka(hd[tl[hd[tclashes]]]),
-		  (char *)hd[hd[tclashes]]);
-	   printlist("",alfasort(tl[hd[tclashes]])); }
-      printf("typecheck cannot proceed - compilation abandoned\n");
-      SYNERR=1;
-      return(result); } /* for unload */
-  return(result);
+        printf("compilation abandoned\n");
+        stackp=dstack; /* in case of BAD_DUMP */
+        return(result);
+    } /* for unload() */
+    if (tclashes!=NIL) {
+        printf("TYPECLASH - the following type%s multiply named:\n",
+               tl[tclashes]==NIL?" is":"s are");
+        /* structure of tclashes is list of strcons(filname,list-of-ids) */
+        for(;tclashes!=NIL;tclashes=tl[tclashes])
+        { printf("\'%s\' of file \"%s\", as: ",
+                 getaka(hd[tl[hd[tclashes]]]),
+                 (char *)hd[hd[tclashes]]);
+            printlist("",alfasort(tl[hd[tclashes]])); }
+        printf("typecheck cannot proceed - compilation abandoned\n");
+        SYNERR=1;
+        return(result);
+    } /* for unload */
+    return(result);
 }
 
 word tlost=NIL;
