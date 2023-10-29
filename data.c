@@ -616,7 +616,7 @@ void dump_script(word files, FILE *f) /* write compiled script files to file f *
     putc(0,f); /* header - not a possible filename */
     dump_defs(algshfns,f);
     if(ND==NIL&&bereaved!=NIL)dump_ob(True,f); /* special flag */
-    else dump_ob(ND,f); 
+    else dump_ob(ND,f);
     putc(DEF_X,f);
     dump_ob(SGC,f);
     putc(DEF_X,f);
@@ -625,112 +625,127 @@ void dump_script(word files, FILE *f) /* write compiled script files to file f *
     dump_defs(internals,f);
 }
 
-void dump_defs(defs,f)  /* write list of defs to file f */
-word defs;
-FILE *f;
-{ while(defs!=NIL)
-       if(tag[hd[defs]]==STRCONS) /* pname */
-	 { word v=get_pn(hd[defs]);
-	   dump_ob(pn_val(hd[defs]),f);
-	   if(v>bits_15)
-	     putc(PN1_X,f),
-	     putint(v,f);
-	   else
-	     putc(PN_X,f),
-	     putc(v&255,f),
-             putc(v >> 8,f);
-           putc(DEF_X,f);
-           defs=tl[defs]; }
-       else
-       { dump_ob(id_val(hd[defs]),f);
-         dump_ob(id_type(hd[defs]),f);
-         dump_ob(id_who(hd[defs]),f);
-         putc(ID_X,f);
-         fprintf(f,"%s",(char *)get_id(hd[defs]));
-         putc(0,f);
-         putc(DEF_X,f);
-         defs=tl[defs]; }
-  putc(DEF_X,f); /* delimiter */
+void dump_defs(word defs, FILE *f)  /* write list of defs to file f */
+{
+    while(defs!=NIL)
+        if(tag[hd[defs]]==STRCONS) {/* pname */
+            word v=get_pn(hd[defs]);
+            dump_ob(pn_val(hd[defs]),f);
+            if(v>bits_15)
+                putc(PN1_X,f),
+                putint(v,f);
+            else
+                putc(PN_X,f),
+                putc(v&255,f),
+                putc(v >> 8,f);
+            putc(DEF_X,f);
+            defs=tl[defs];
+        } else {
+            dump_ob(id_val(hd[defs]),f);
+            dump_ob(id_type(hd[defs]),f);
+            dump_ob(id_who(hd[defs]),f);
+            putc(ID_X,f);
+            fprintf(f,"%s",(char *)get_id(hd[defs]));
+            putc(0,f);
+            putc(DEF_X,f);
+            defs=tl[defs];
+        }
+    putc(DEF_X,f); /* delimiter */
 }
 
-void dump_ob(x,f)  /* write combinatory expression x to file f */
-word x;
-FILE *f;
+static void dump_ob(word x, FILE *f)  /* write combinatory expression x to file f */
 { /* printob("dumping: ",x); /* DEBUG */
-  switch(tag[x])
-  { case ATOM: if(x<128)putc(x,f); else
-               if(x>=384)putc(x-256,f); else
-               putc(CHAR_X,f),putc(x-128,f);
-               return;
-    case TVAR: putc(TVAR_X,f), putc(gettvar(x),f);
-	       if(gettvar(x)>255)
-		 fprintf(stderr,"panic, tvar too large\n");
-	       return;
-    case INT: { word d=digit(x);
-		if(rest(x)==0&&(d&MAXDIGIT)<=127)
-		  { if(d&SIGNBIT)d= -(d&MAXDIGIT);
-		    putc(SHORT_X,f); putc(d,f); return; }
-		putc(INT_X,f);
-		putint(d,f);
-		x=rest(x);
-		while(x)
-		     putint(digit(x),f),x=rest(x);
-		putint(-1,f);
-		return; }
-		/* 4 bytes per digit wasteful at current value of IBASE */
-    case DOUBLE: putc(DBL_X,f);
-                 putdbl(x,f);
-/*
-		 putword(hd[x],f);
-#ifdef splitdouble
-		 putword(tl[x],f);
-#endif
-*/
-		 return;
-    case UNICODE: putc(UNICODE_X,f);
+    switch(tag[x]) {
+        case ATOM:
+            if(x<128)putc(x,f); else
+                if(x>=384)putc(x-256,f); else
+                    putc(CHAR_X,f),putc(x-128,f);
+            return;
+        case TVAR:
+            putc(TVAR_X,f), putc(gettvar(x),f);
+            if(gettvar(x)>255)
+                fprintf(stderr,"panic, tvar too large\n");
+            return;
+        case INT: {
+            word d=digit(x);
+            if(rest(x)==0&&(d&MAXDIGIT)<=127) {
+                if(d&SIGNBIT)d= -(d&MAXDIGIT);
+                putc(SHORT_X,f); putc(d,f); return;
+            }
+            putc(INT_X,f);
+            putint(d,f);
+            x=rest(x);
+            while(x)
+                putint(digit(x),f),x=rest(x);
+            putint(-1,f);
+            return;
+        }
+            /* 4 bytes per digit wasteful at current value of IBASE */
+        case DOUBLE:
+            putc(DBL_X,f);
+            putdbl(x,f);
+            /*
+             putword(hd[x],f);
+             #ifdef splitdouble
+             putword(tl[x],f);
+             #endif
+             */
+            return;
+    case UNICODE:
+            putc(UNICODE_X,f);
                   putint(hd[x],f);
                   return;
-    case DATAPAIR: fprintf(f,"%c%s",AKA_X,(char *)hd[x]);
+    case DATAPAIR:
+            fprintf(f,"%c%s",AKA_X,(char *)hd[x]);
 	           putc(0,f);
 	           return;
-    case FILEINFO: { word line=tl[x];
-		     if((char *)hd[x]==CFN)putc(HERE_X,f);
-		     else fprintf(f,"%c%s",HERE_X,mkrel(hd[x]));
-		     putc(0,f);
-		     putc(line&255,f);
-		     putc((line >>= 8)&255,f);
-		     if(line>255)fprintf(stderr,
-		     "impossible line number %ld in dump_ob\n",tl[x]);
-		     return; }
-    case CONSTRUCTOR: dump_ob(tl[x],f);
-		      putc(CONSTRUCT_X,f);
-		      putc(hd[x]&255,f);
-		      putc(hd[x]>>8,f);
-		      return;
-    case STARTREADVALS: dump_ob(tl[x],f);
-			putc(RV_X,f);
-			return;
-    case ID: fprintf(f,"%c%s",ID_X,get_id(x));
-	     putc(0,f);
-	     return;
-    case STRCONS: { word v=get_pn(x); /* private name */
-	            if(v>bits_15)
-	              putc(PN1_X,f),
-	              putint(v,f);
-	            else
-		      putc(PN_X,f),
-		      putc(v&255,f),
-		      putc(v >> 8,f);
-		    return; }
-    case AP: dump_ob(hd[x],f);
-	     dump_ob(tl[x],f);
-	     putc(AP_X,f);
-	     return;
-    case CONS: dump_ob(tl[x],f);
-	       dump_ob(hd[x],f);
-	       putc(CONS_X,f);
-	       return;
-    default: fprintf(stderr,"impossible tag %d in dump_ob\n",tag[x]);
+        case FILEINFO: {
+            word line=tl[x];
+            if((char *)hd[x]==CFN)putc(HERE_X,f);
+            else fprintf(f,"%c%s",HERE_X,mkrel(hd[x]));
+            putc(0,f);
+            putc(line&255,f);
+            putc((line >>= 8)&255,f);
+            if(line>255)fprintf(stderr,
+                                "impossible line number %ld in dump_ob\n",tl[x]);
+            return;
+        }
+        case CONSTRUCTOR:
+            dump_ob(tl[x],f);
+            putc(CONSTRUCT_X,f);
+            putc(hd[x]&255,f);
+            putc(hd[x]>>8,f);
+            return;
+        case STARTREADVALS:
+            dump_ob(tl[x],f);
+            putc(RV_X,f);
+            return;
+        case ID:
+            fprintf(f,"%c%s",ID_X,get_id(x));
+            putc(0,f);
+            return;
+        case STRCONS: {
+            word v=get_pn(x); /* private name */
+            if(v>bits_15)
+                putc(PN1_X,f),
+                putint(v,f);
+            else
+                putc(PN_X,f),
+                putc(v&255,f),
+                putc(v >> 8,f);
+            return; }
+        case AP:
+            dump_ob(hd[x],f);
+            dump_ob(tl[x],f);
+            putc(AP_X,f);
+            return;
+        case CONS:
+            dump_ob(tl[x],f);
+            dump_ob(hd[x],f);
+            putc(CONS_X,f);
+            return;
+        default:
+            fprintf(stderr,"impossible tag %d in dump_ob\n",tag[x]);
     }
 }
 
@@ -740,113 +755,119 @@ extern char *dic; extern word DICSPACE;
 word BAD_DUMP=0,CLASHES=NIL,ALIASES=NIL,PNBASE=0,SUPPRESSED=NIL,
     TSUPPRESSED=NIL,TORPHANS=0;
 
-word load_script(f,src,aliases,params,main)
+word load_script(FILE *f, char *src, word aliases, word params, word main)
 	     /* loads a compiled script from file f for source src */
 	     /* main=1 if is being loaded as main script, 0 otherwise */
-FILE *f;
-char *src;
-word aliases,params,main;
-{ extern word nextpn,ND,errline,algshfns,internals,freeids,includees,SGC;
-  extern char *dicp, *dicq;
-  word ch,files=NIL;
-  TORPHANS=BAD_DUMP=0;
-  CLASHES=NIL;
-  dsetup();
-  setprefix(src);
-  if(getc(f)!= wordsize || getc(f)!=XVERSION)
-    { BAD_DUMP= -1; return(NIL); }
-  if(aliases!=NIL)
-    { /* for each `old' install diversion to `new' */
-      /* if alias is of form -old `new' is a pname */
-      word a,hold;
-      ALIASES=aliases;
-      for(a=aliases;a!=NIL;a=tl[a])
-	 { word old=tl[hd[a]],new=hd[hd[a]];
-	   hold=cons(id_who(old),cons(id_type(old),id_val(old)));
-	   id_type(old)=alias_t;
-	   id_val(old)=new;
-	   if(tag[new]==ID)
-           if((id_type(new)!=undef_t||id_val(new)!=UNDEF)
-	      &&id_type(new)!=alias_t)
-	     CLASHES=add1(new,CLASHES);
-	   hd[hd[a]]=hold;
-         }
-      if(CLASHES!=NIL){ BAD_DUMP= -2; unscramble(aliases); return(NIL); }
-      for(a=aliases;a!=NIL;a=tl[a]) /* FIX1 */
-	 if(tag[ch=id_val(tl[hd[a]])]==ID) /* FIX1 */
-	 if(id_type(ch)!=alias_t) /* FIX1 */
-	    id_type(ch)=new_t; /* FIX1 */
+{
+    extern word nextpn,ND,errline,algshfns,internals,freeids,includees,SGC;
+    extern char *dicp, *dicq;
+    word ch,files=NIL;
+    TORPHANS=BAD_DUMP=0;
+    CLASHES=NIL;
+    dsetup();
+    setprefix(src);
+    if(getc(f)!= wordsize || getc(f)!=XVERSION) {
+        BAD_DUMP= -1; return(NIL);
     }
-  PNBASE=nextpn;  /* base for relocation of internal names in dump */
-  SUPPRESSED=NIL; /* list of `-id' aliases successfully obeyed */
-  TSUPPRESSED=NIL;  /* list of -typename aliases (illegal just now) */
-  while((ch=getc(f))!=0&&ch!=EOF&&!BAD_DUMP)
-       { word s,holde=0;
-	 dicq=dicp;
-	 if(files==NIL&&ch==1) /* type error script */
-           { holde=getword(f),ch=getc(f);
-	     if(main)errline=holde; }
-	 if(ch!='/')(void)strcpy(dicp,prefix),dicq+=preflen;
-		   /* locate wrt current posn */
-         *dicq++ = ch;
-         while((*dicq++ =ch=getc(f))&&ch!=EOF); /* filename */
-	 ovflocheck;
-         ch=getword(f); /* mtime */
-	 s=getc(f); /* share bit */
-         /*printf("loading: %s(%d)\n",dicp,ch); /* DEBUG */
-	 if(files==NIL) /* is this the right dump? */
-	 if(strcmp(dicp,src))
-	   { BAD_DUMP=1;
-	     if(aliases!=NIL)unscramble(aliases);
-	     return(NIL); }
-	 CFN=get_id(name()); /* wasteful way to share filename */
-         files = cons(make_fil(CFN,ch,s,load_defs(f)),
-		      files);
-       }
-/* warning: load_defs side effects id's in namebuckets, cannot  be  undone  by
-unload  until  attached  to  global `files', so interrupts are disabled during
-load_script - see steer.c */ /* for big dumps this may be too coarse - FIX */
-  if(ch==EOF||BAD_DUMP){ if(!BAD_DUMP)BAD_DUMP=2; 
-	                 if(aliases!=NIL)unscramble(aliases);
-	                 return(files); }
-  if(files==NIL){ /* dump of syntax error state */
-		  extern word oldfiles;
-		  ch=getword(f);
-		  if(main)errline=ch;
-                  while((ch=getc(f))!=EOF)
-                       { dicq=dicp;
-	                 if(ch!='/')(void)strcpy(dicp,prefix),dicq+=preflen;
-		                   /* locate wrt current posn */
-                         *dicq++ = ch;
-                         while((*dicq++ =ch=getc(f))&&ch!=EOF); /* filename */
-			 ovflocheck;
-                         ch=getword(f); /* mtime */
-	                 if(oldfiles==NIL) /* is this the right dump? */
-	                 if(strcmp(dicp,src))
-	                   { BAD_DUMP=1; 
-	                     if(aliases!=NIL)unscramble(aliases);
-			     return(NIL); }
-                         oldfiles = cons(make_fil(get_id(name()),ch,0,NIL),
-		                    oldfiles);
-		       }
-	          if(aliases!=NIL)unscramble(aliases);
-		  return(NIL); }
-  algshfns=append1(algshfns,load_defs(f));
-  ND=load_defs(f);
-  if(ND==True)ND=NIL,TORPHANS=1;
-  SGC=append1(SGC,load_defs(f));
-  if(main||includees==NIL)freeids=load_defs(f);
-  else bindparams(load_defs(f),hdsort(params));
-  if(aliases!=NIL)unscramble(aliases);
-  if(main)internals=load_defs(f);
-  return(reverse(files));
+    if (aliases!=NIL) { /* for each `old' install diversion to `new' */
+        /* if alias is of form -old `new' is a pname */
+        word a,hold;
+        ALIASES=aliases;
+        for(a=aliases;a!=NIL;a=tl[a]) {
+            word old=tl[hd[a]],new=hd[hd[a]];
+            hold=cons(id_who(old),cons(id_type(old),id_val(old)));
+            id_type(old)=alias_t;
+            id_val(old)=new;
+            if(tag[new]==ID)
+                if((id_type(new)!=undef_t||id_val(new)!=UNDEF)
+                   &&id_type(new)!=alias_t)
+                    CLASHES=add1(new,CLASHES);
+            hd[hd[a]]=hold;
+        }
+        if(CLASHES!=NIL) {
+            BAD_DUMP= -2;
+            unscramble(aliases);
+            return(NIL);
+        }
+        for(a=aliases;a!=NIL;a=tl[a]) /* FIX1 */
+        if(tag[ch=id_val(tl[hd[a]])]==ID) /* FIX1 */
+            if(id_type(ch)!=alias_t) /* FIX1 */
+                id_type(ch)=new_t; /* FIX1 */
+    }
+    PNBASE=nextpn;  /* base for relocation of internal names in dump */
+    SUPPRESSED=NIL; /* list of `-id' aliases successfully obeyed */
+    TSUPPRESSED=NIL;  /* list of -typename aliases (illegal just now) */
+    while((ch=getc(f))!=0&&ch!=EOF&&!BAD_DUMP) {
+        word s,holde=0;
+        dicq=dicp;
+        if(files==NIL&&ch==1) { /* type error script */
+            holde=getword(f),ch=getc(f);
+            if(main)errline=holde;
+        }
+        if(ch!='/') (void)strcpy(dicp,prefix),dicq+=preflen;
+        /* locate wrt current posn */
+        *dicq++ = ch;
+        while((*dicq++ =ch=getc(f))&&ch!=EOF); /* filename */
+        ovflocheck;
+        ch=getword(f); /* mtime */
+        s=getc(f); /* share bit */
+        /*printf("loading: %s(%d)\n",dicp,ch); /* DEBUG */
+        if(files==NIL) /* is this the right dump? */
+            if(strcmp(dicp,src)) {
+                BAD_DUMP=1;
+                if(aliases!=NIL)unscramble(aliases);
+                return(NIL);
+            }
+        CFN=get_id(name()); /* wasteful way to share filename */
+        files = cons(make_fil(CFN,ch,s,load_defs(f)), files);
+    }
+    /* warning: load_defs side effects id's in namebuckets, cannot  be  undone  by
+     unload  until  attached  to  global `files', so interrupts are disabled during
+     load_script - see steer.c */ /* for big dumps this may be too coarse - FIX */
+    if(ch==EOF||BAD_DUMP) {
+        if(!BAD_DUMP)BAD_DUMP=2;
+        if(aliases!=NIL)unscramble(aliases);
+        return(files);
+    }
+    if(files==NIL) { /* dump of syntax error state */
+        extern word oldfiles;
+        ch=getword(f);
+        if(main)errline=ch;
+        while((ch=getc(f))!=EOF) {
+            dicq=dicp;
+            if(ch!='/')(void)strcpy(dicp,prefix),dicq+=preflen;
+            /* locate wrt current posn */
+            *dicq++ = ch;
+            while((*dicq++ =ch=getc(f))&&ch!=EOF); /* filename */
+            ovflocheck;
+            ch=getword(f); /* mtime */
+            if(oldfiles==NIL) /* is this the right dump? */
+                if(strcmp(dicp,src))  {
+                    BAD_DUMP=1;
+                    if(aliases!=NIL)unscramble(aliases);
+                    return(NIL);
+                }
+            oldfiles = cons(make_fil(get_id(name()),ch,0,NIL), oldfiles);
+        }
+        if(aliases!=NIL)unscramble(aliases);
+        return(NIL);
+    }
+    algshfns=append1(algshfns,load_defs(f));
+    ND=load_defs(f);
+    if(ND==True)ND=NIL,TORPHANS=1;
+    SGC=append1(SGC,load_defs(f));
+    if(main||includees==NIL)freeids=load_defs(f);
+    else bindparams(load_defs(f),hdsort(params));
+    if(aliases!=NIL)unscramble(aliases);
+    if(main)internals=load_defs(f);
+    return(reverse(files));
 }/* was it necessary to unscramble aliases before error returns?
-    check this later */
+  check this later */
 /* actions labelled FIX1 were inserted to deal with the pathological case
-   that the destination of an alias (not part of a cyclic alias) has a direct
-   definition in the file and the aliasee is missing from the file
-   - this is both nameclash and missing aliasee, but without fix the two
-   errors cancel each other out and are unreported */
+ that the destination of an alias (not part of a cyclic alias) has a direct
+ definition in the file and the aliasee is missing from the file
+ - this is both nameclash and missing aliasee, but without fix the two
+ errors cancel each other out and are unreported */
 
 word DETROP=NIL,MISSING=NIL;
 
@@ -855,274 +876,293 @@ static void bindparams(word formal, word actual) /* process bindings of free ids
 /* actual is list of cons(name,value) | ap(name,typevalue)) */
 /* both in alpha order of original name */
 {
-	extern word FBS; word badkind=NIL;
-  DETROP=MISSING=NIL;
-  FBS=cons(formal,FBS);
-  /* FBS is list of list of formals bound in current script */
-  for(;;)
-     { word a; char *f;
-       while(formal!=NIL && (actual==NIL ||
-   strcmp((f=(char *)hd[hd[tl[hd[formal]]]]),get_id(a=hd[hd[actual]]))<0))
-	 /* the_val(hd[hd[formal]])=findid((char *)hd[hd[tl[hd[formal]]]]),
-	    above line picks up identifier of that name in current scope */
-	    MISSING=cons(hd[tl[hd[formal]]],MISSING),
-	    formal=tl[formal];
-       if(actual==NIL)break;
-       if(formal==NIL||strcmp(f,get_id(a)))DETROP=cons(a,DETROP);
-       else { word fa=tl[tl[hd[formal]]]==type_t?t_arity(hd[hd[formal]]):-1;
-	      word ta=tag[hd[actual]]==AP?t_arity(hd[actual]):-1;
-	      if(fa!=ta)
-		badkind=cons(cons(hd[hd[actual]],datapair(fa,ta)),badkind);
-	      the_val(hd[hd[formal]])=tl[hd[actual]];
-	      formal=tl[formal]; }
-       actual=tl[actual];
-     }
-for(;badkind!=NIL;badkind=tl[badkind])
-   DETROP=cons(hd[badkind],DETROP);
+    extern word FBS; word badkind=NIL;
+    DETROP=MISSING=NIL;
+    FBS=cons(formal,FBS);
+    /* FBS is list of list of formals bound in current script */
+    for(;;) {
+        word a; char *f;
+        while(formal!=NIL && (actual==NIL ||
+                              strcmp((f=(char *)hd[hd[tl[hd[formal]]]]),get_id(a=hd[hd[actual]]))<0))
+        /* the_val(hd[hd[formal]])=findid((char *)hd[hd[tl[hd[formal]]]]),
+         above line picks up identifier of that name in current scope */
+            MISSING=cons(hd[tl[hd[formal]]],MISSING),
+            formal=tl[formal];
+        if(actual==NIL)break;
+        if(formal==NIL||strcmp(f,get_id(a)))DETROP=cons(a,DETROP);
+        else {
+            word fa=tl[tl[hd[formal]]]==type_t?t_arity(hd[hd[formal]]):-1;
+            word ta=tag[hd[actual]]==AP?t_arity(hd[actual]):-1;
+            if(fa!=ta)
+                badkind=cons(cons(hd[hd[actual]],datapair(fa,ta)),badkind);
+            the_val(hd[hd[formal]])=tl[hd[actual]];
+            formal=tl[formal];
+        }
+        actual=tl[actual];
+    }
+    for(;badkind!=NIL;badkind=tl[badkind])
+    DETROP=cons(hd[badkind],DETROP);
 }
 
-void unscramble(aliases) /* remove old to new diversions installed above */
-word aliases;
-{ word a=NIL;
-  for(;aliases!=NIL;aliases=tl[aliases])
-     { word old=tl[hd[aliases]],hold=hd[hd[aliases]];
-       word new=id_val(old); 
-       hd[hd[aliases]]=new; /* put back for missing check, see below */
-       id_who(old)=hd[hold]; hold=tl[hold];
-       id_type(old)=hd[hold];
-       id_val(old)=tl[hold]; }
-  for(;ALIASES!=NIL;ALIASES=tl[ALIASES])
-     { word new=hd[hd[ALIASES]];
-       word old=tl[hd[ALIASES]];
-       if(tag[new]!=ID)
-	 { if(!member(SUPPRESSED,new))a=cons(old,a);
-	   continue; } /* aka stuff irrelevant to pnames */
-       if(id_type(new)==new_t)id_type(new)=undef_t;  /* FIX1 */
-       if(id_type(new)==undef_t)a=cons(old,a); else
-       if(!member(CLASHES,new))
-	 /* install aka info in new */
-	 if(tag[id_who(new)]!=CONS)
-	   id_who(new)=cons(datapair(get_id(old),0),id_who(new)); }
-  ALIASES=a; /* transmits info about missing aliasees */
+static void unscramble(word aliases) /* remove old to new diversions installed above */
+{
+    word a=NIL;
+    for(;aliases!=NIL;aliases=tl[aliases])  {
+        word old=tl[hd[aliases]],hold=hd[hd[aliases]];
+        word new=id_val(old);
+        hd[hd[aliases]]=new; /* put back for missing check, see below */
+        id_who(old)=hd[hold]; hold=tl[hold];
+        id_type(old)=hd[hold];
+        id_val(old)=tl[hold];
+    }
+    for(;ALIASES!=NIL;ALIASES=tl[ALIASES]) {
+        word new=hd[hd[ALIASES]];
+        word old=tl[hd[ALIASES]];
+        if(tag[new]!=ID) {
+            if(!member(SUPPRESSED,new))a=cons(old,a);
+            continue;
+        } /* aka stuff irrelevant to pnames */
+        if(id_type(new)==new_t)id_type(new)=undef_t;  /* FIX1 */
+        if(id_type(new)==undef_t) a=cons(old,a);
+        else if(!member(CLASHES,new))
+        /* install aka info in new */
+            if(tag[id_who(new)]!=CONS)
+                id_who(new)=cons(datapair(get_id(old),0),id_who(new));
+    }
+    ALIASES=a; /* transmits info about missing aliasees */
 }
 
-char *getaka(x) /* returns original name of x (as a string) */
-word x;
-{ word y=id_who(x);
-  return(tag[y]!=CONS?get_id(x):(char *)hd[hd[y]]);
+char *getaka(word x) /* returns original name of x (as a string) */
+{
+    word y=id_who(x);
+    return(tag[y]!=CONS ? get_id(x) : (char *)hd[hd[y]]);
 }
 
-word get_here(x) /* here info for id x */
-word x;
-{ word y=id_who(x);
-  return(tag[y]==CONS?tl[y]:y);
+word get_here(word x) /* here info for id x */
+{
+    word y=id_who(x);
+    return(tag[y]==CONS ? tl[y] : y);
 }
 
-void dsetup()
-{ if(!dstack)
-    { dstack=(word *)malloc(1000*sizeof(word));
-      if(dstack==NULL)mallocfail("dstack");
-      dlim=dstack+1000; }
-  stackp=dstack;
+static void dsetup(void)
+{
+    if(!dstack) {
+        dstack=(word *)malloc(1000*sizeof(word));
+        if (dstack==NULL) mallocfail("dstack");
+        dlim=dstack+1000;
+    }
+    stackp=dstack;
 }
 
-void dgrow()
-{ word *hold=dstack;
-  dstack=(word *)realloc(dstack,2*(dlim-dstack)*sizeof(word));
-  if(dstack==NULL)mallocfail("dstack");
-  dlim=dstack+2*(dlim-hold);
-  stackp += dstack-hold;
-  /*printf("dsize=%d\n",dlim-dstack);  /* DEBUG */
+static void dgrow(void)
+{
+    word *hold=dstack;
+    dstack=(word *)realloc(dstack,2*(dlim-dstack)*sizeof(word));
+    if(dstack==NULL)mallocfail("dstack");
+    dlim=dstack+2*(dlim-hold);
+    stackp += dstack-hold;
+    /*printf("dsize=%d\n",dlim-dstack);  /* DEBUG */
 }
 
-word load_defs(f)  /* load a sequence of definitions from file f, terminated
-		 by DEF_X, or a single object terminated by DEF_X */
-FILE *f;
-{ extern char *dicp, *dicq;
-  extern word *pnvec,common_stdin,common_stdinb,nextpn,rv_script;
-  word ch, defs=NIL;
-  while((ch=getc(f))!=EOF)
-  { if(stackp==dlim)dgrow();
-    switch(ch)
-    { case CHAR_X: *stackp++ = getc(f)+128;
-		   continue;
-      case TVAR_X: *stackp++ = mktvar(getc(f));
-		   continue;
-      case SHORT_X: ch = getc(f);
-		    if(ch&128)ch= ch|(~127); /*force a sign extension*/
-		    *stackp++ = stosmallint(ch);
-		    continue;
-      case INT_X: { word *x;
-		    ch = getint(f);
-		    *stackp++ = make(INT,ch,0);
-		    x = &rest(stackp[-1]);
-		    ch = getint(f);
-		    while(ch!= -1)
-			 *x=make(INT,ch,0),ch=getint(f),x= &rest(*x);
-		    continue; }
-      case DBL_X: *stackp++ = getdbl(f);
-/*
-#ifdef splitdouble
-		  *stackp++ = make(DOUBLE,ch,getword(f));
-#else
-                  *stackp++ = make(DOUBLE,ch,0);
-#endif
-*/
-		  continue;
-      case UNICODE_X: *stackp++ = make(UNICODE,getint(f),0);
-                      continue;
-      case PN_X: ch = getc(f);
-		 ch = PNBASE+(ch|(getc(f)<<8));
-		 *stackp++ = ch<nextpn?pnvec[ch]:sto_pn(ch);
-		 /* efficiency hack for *stackp++ = sto_pn(ch); */
-		 continue;
-      case PN1_X: ch=PNBASE+getint(f);
-		  *stackp++ = ch<nextpn?pnvec[ch]:sto_pn(ch);
-		  /* efficiency hack for *stackp++ = sto_pn(ch); */
-		  continue;
-      case CONSTRUCT_X: ch = getc(f);
-		        ch = ch|(getc(f)<<8);
-	                stackp[-1] = constructor(ch,stackp[-1]);
-		        continue;
-      case RV_X: stackp[-1] = readvals(0,stackp[-1]);
-		 rv_script=1;
-		 continue;
-      case ID_X: dicq=dicp;
-                 while((*dicq++ =ch=getc(f))&&ch!=EOF);
-		 ovflocheck;
-	         *stackp++=name(); /* see lex.c */
-		 if(id_type(stackp[-1])==new_t) /* FIX1 (& next 2 lines) */
-		   CLASHES=add1(stackp[-1],CLASHES),stackp[-1]=NIL;
-		 else
-		 if(id_type(stackp[-1])==alias_t) /* follow alias */
-		   stackp[-1]=id_val(stackp[-1]);
-	         continue;
-      case AKA_X: dicq=dicp;
-		  while((*dicq++ =ch=getc(f))&&ch!=EOF);
-		  ovflocheck;
-	          *stackp++=datapair(get_id(name()),0);
-			    /* wasteful, to share string */
-	          continue;
-      case HERE_X: dicq=dicp;
-                   ch=getc(f);
-		   if(!ch){ /* coding hack, 0 means current file name */
-			    ch = getc(f);
-		            ch = ch|getc(f)<<8;
-	                    *stackp++ = fileinfo(CFN,ch);
-			    continue; }
-		   /* next line locates wrt current posn */
-		   if(ch!='/')(void)strcpy(dicp,prefix),dicq+=preflen;
-		   *dicq++ = ch;
-                   while((*dicq++ =ch=getc(f))&&ch!=EOF);
-		   ovflocheck;
-		   ch = getc(f);
-		   ch = ch|getc(f)<<8;
-	           *stackp++ = fileinfo(get_id(name()),ch); /* wasteful */
-		   continue;
-      case DEF_X: switch(stackp-dstack){
-		  case 0: /* defs delimiter */
-		    { /*printlist("contents: ",defs); /* DEBUG */
-		      return(reverse(defs)); }
-		  case 1: /* ob delimiter */
-		    { return(*--stackp); }
-		  case 2: /* pname defn */
-		    { ch = *--stackp;
-		      pn_val(ch)= *--stackp;
-		      defs=cons(ch,defs); /* NB defs now includes pnames */
-		      continue; }
-		  case 4:
-		  if(tag[stackp[-1]]!=ID)
-		    if(stackp[-1]==NIL){ stackp -= 4; continue; } /* FIX1 */
-		    else { /* id aliased to pname */
-			   word akap;
-			   ch= *--stackp;
-			   SUPPRESSED=cons(ch,SUPPRESSED);
-			   stackp--; /* who */
-			   akap= tag[*stackp]==CONS?hd[*stackp]:NIL;
-			   stackp--;  /* lose type */
-			   pn_val(ch)= *--stackp;
-			   if(stackp[1]==type_t&&t_class(ch)!=synonym_t)
-			     /* suppressed typename */
-			     { word a=ALIASES; /* reverse assoc in ALIASES */
-			       while(a!=NIL&&id_val(tl[hd[a]])!=ch)
-			             a=tl[a];
-			       if(a!=NIL) /* surely must hold ?? */
-			       TSUPPRESSED=cons(tl[hd[a]],TSUPPRESSED);
-			       /*if(akap==NIL)
-			         akap=datapair(get_id(tl[hd[a]]),0); */
-			     /*if(t_class(ch)==algebraic_t)
-			     CSUPPRESS=append1(CSUPPRESS,t_info(ch));
-	                     t_info(ch)= cons(akap,fileinfo(CFN,0));
-	                     /* assists identifn of dangling typerefs 
-		                see privatise() in steer.c */ }else
-			   if(pn_val(ch)==UNDEF)
-			     { /* special kludge for undefined names */
-			       /* necessary only if we allow names specified
-				  but not defined to be %included */
-			       if(akap==NIL) /* reverse assoc in ALIASES */
-				 { word a=ALIASES;
-			           while(a!=NIL&&id_val(tl[hd[a]])!=ch)
-					a=tl[a];
-				   if(a!=NIL)
-				   akap=datapair(get_id(tl[hd[a]]),0); } 
-			       pn_val(ch)= ap(akap,fileinfo(CFN,0));
-			       /* this will generate sensible error message
-				  see reduction rule for DATAPAIR */
-			     }
-		           defs=cons(ch,defs);
-			   continue; }
-		  if(
-		    id_type(stackp[-1])!=new_t&& /* FIX1 */
-		    (id_type(stackp[-1])!=undef_t||
-		     id_val(stackp[-1])!=UNDEF)) /* nameclash */
-		    { if(id_type(stackp[-1])==alias_t) /* cyclic aliasing */
-			{ word a=ALIASES;
-			  while(a!=NIL&&tl[hd[a]]!=stackp[-1])a=tl[a];
-			  if(a==NIL)
-			    { fprintf(stderr,
-			      "impossible event in cyclic alias (%s)\n",
-			       get_id(stackp[-1]));
-                              stackp-=4;
-			      continue; }
-			  defs=cons(*--stackp,defs);
-			  hd[hd[hd[a]]]= *--stackp; /* who */
-			  hd[tl[hd[hd[a]]]]= *--stackp; /* type */
-			  tl[tl[hd[hd[a]]]]= *--stackp; /* value */
-			  continue; }
-		      /*if(strcmp(CFN,hd[get_here(stackp[-1])]))
-			/* EXPT (ignore clash if from same original file) */
-		      CLASHES=add1(stackp[-1],CLASHES);
-		      stackp-=4; }
-		  else
-		      defs=cons(*--stackp,defs),
-                      /*printf("%s undumped\n",get_id(hd[defs])), /* DEBUG */
-		      id_who(hd[defs])= *--stackp,
-		      id_type(hd[defs])= *--stackp,
-		      id_val(hd[defs])= *--stackp;
-		  continue;
-		  default:
-		    { /* printf("badly formed def in dump\n"); /* DEBUG */
-		      BAD_DUMP=3; return(defs); } /* should unsetids */
-		  } /* of switch */
-      case AP_X: ch = *--stackp;
-		 if(stackp[-1]==READ&&ch==0)stackp[-1] = common_stdin; else
-		 if(stackp[-1]==READBIN&&ch==0)stackp[-1] = common_stdinb; else
-	         stackp[-1] = ap(stackp[-1],ch);
-	         continue;
-      case CONS_X: ch = *--stackp;
-	           stackp[-1] = cons(ch,stackp[-1]);
-	           continue;
-      default: *stackp++ = ch>127?ch+256:ch;
-    }}
-  BAD_DUMP=4; /* should unsetids */
-  return(defs);
+word load_defs(FILE *f)  /* load a sequence of definitions from file f, terminated
+                    by DEF_X, or a single object terminated by DEF_X */
+{
+    extern char *dicp, *dicq;
+    extern word *pnvec,common_stdin,common_stdinb,nextpn,rv_script;
+    word ch, defs=NIL;
+    while((ch=getc(f))!=EOF) {
+        if(stackp==dlim)dgrow();
+        switch(ch) {
+            case CHAR_X: *stackp++ = getc(f)+128;
+                continue;
+            case TVAR_X: *stackp++ = mktvar(getc(f));
+                continue;
+            case SHORT_X: ch = getc(f);
+                if(ch&128)ch= ch|(~127); /*force a sign extension*/
+                *stackp++ = stosmallint(ch);
+                continue;
+            case INT_X: { word *x;
+                ch = getint(f);
+                *stackp++ = make(INT,ch,0);
+                x = &rest(stackp[-1]);
+                ch = getint(f);
+                while(ch!= -1)
+                    *x=make(INT,ch,0),ch=getint(f),x= &rest(*x);
+                continue; }
+            case DBL_X: *stackp++ = getdbl(f);
+                /*
+                 #ifdef splitdouble
+                 *stackp++ = make(DOUBLE,ch,getword(f));
+                 #else
+                 *stackp++ = make(DOUBLE,ch,0);
+                 #endif
+                 */
+                continue;
+            case UNICODE_X: *stackp++ = make(UNICODE,getint(f),0);
+                continue;
+            case PN_X: ch = getc(f);
+                ch = PNBASE+(ch|(getc(f)<<8));
+                *stackp++ = ch<nextpn?pnvec[ch]:sto_pn(ch);
+                /* efficiency hack for *stackp++ = sto_pn(ch); */
+                continue;
+            case PN1_X: ch=PNBASE+getint(f);
+                *stackp++ = ch<nextpn?pnvec[ch]:sto_pn(ch);
+                /* efficiency hack for *stackp++ = sto_pn(ch); */
+                continue;
+            case CONSTRUCT_X: ch = getc(f);
+                ch = ch|(getc(f)<<8);
+                stackp[-1] = constructor(ch,stackp[-1]);
+                continue;
+            case RV_X: stackp[-1] = readvals(0,stackp[-1]);
+                rv_script=1;
+                continue;
+            case ID_X: dicq=dicp;
+                while((*dicq++ =ch=getc(f))&&ch!=EOF);
+                ovflocheck;
+                *stackp++=name(); /* see lex.c */
+                if(id_type(stackp[-1])==new_t) /* FIX1 (& next 2 lines) */
+                    CLASHES=add1(stackp[-1],CLASHES),stackp[-1]=NIL;
+                else if(id_type(stackp[-1])==alias_t) /* follow alias */
+                        stackp[-1]=id_val(stackp[-1]);
+                continue;
+            case AKA_X: dicq=dicp;
+                while((*dicq++ =ch=getc(f))&&ch!=EOF);
+                ovflocheck;
+                *stackp++=datapair(get_id(name()),0);
+                /* wasteful, to share string */
+                continue;
+            case HERE_X: dicq=dicp;
+                ch=getc(f);
+                if(!ch) { /* coding hack, 0 means current file name */
+                    ch = getc(f);
+                    ch = ch|getc(f)<<8;
+                    *stackp++ = fileinfo(CFN,ch);
+                    continue;
+                }
+                /* next line locates wrt current posn */
+                if(ch!='/')(void)strcpy(dicp,prefix),dicq+=preflen;
+                *dicq++ = ch;
+                while ((*dicq++ =ch=getc(f))&&ch!=EOF);
+                ovflocheck;
+                ch = getc(f);
+                ch = ch|getc(f)<<8;
+                *stackp++ = fileinfo(get_id(name()),ch); /* wasteful */
+                continue;
+            case DEF_X:
+                switch(stackp-dstack) {
+                    case 0: /* defs delimiter */
+                    { /*printlist("contents: ",defs); /* DEBUG */
+                        return(reverse(defs)); }
+                    case 1: /* ob delimiter */
+                    { return(*--stackp); }
+                    case 2: /* pname defn */
+                    { ch = *--stackp;
+                        pn_val(ch)= *--stackp;
+                        defs=cons(ch,defs); /* NB defs now includes pnames */
+                        continue; }
+                    case 4:
+                        if(tag[stackp[-1]]!=ID)
+                            if(stackp[-1]==NIL){ stackp -= 4; continue; } /* FIX1 */
+                            else { /* id aliased to pname */
+                                word akap;
+                                ch= *--stackp;
+                                SUPPRESSED=cons(ch,SUPPRESSED);
+                                stackp--; /* who */
+                                akap= tag[*stackp]==CONS?hd[*stackp]:NIL;
+                                stackp--;  /* lose type */
+                                pn_val(ch)= *--stackp;
+                                if(stackp[1]==type_t&&t_class(ch)!=synonym_t) {
+                                    /* suppressed typename */
+                                    word a=ALIASES; /* reverse assoc in ALIASES */
+                                    while(a!=NIL&&id_val(tl[hd[a]])!=ch)
+                                        a=tl[a];
+                                    if(a!=NIL) /* surely must hold ?? */
+                                        TSUPPRESSED=cons(tl[hd[a]],TSUPPRESSED);
+                                    /*if(akap==NIL)
+                                     akap=datapair(get_id(tl[hd[a]]),0); */
+                                    /*if(t_class(ch)==algebraic_t)
+                                     CSUPPRESS=append1(CSUPPRESS,t_info(ch));
+                                     t_info(ch)= cons(akap,fileinfo(CFN,0));
+                                     /* assists identifn of dangling typerefs
+                                     see privatise() in steer.c */ }else
+                                         if(pn_val(ch)==UNDEF) {
+                                             /* special kludge for undefined names */
+                                             /* necessary only if we allow names specified
+                                              but not defined to be %included */
+                                             if(akap==NIL) {/* reverse assoc in ALIASES */
+                                                 word a=ALIASES;
+                                                 while(a!=NIL&&id_val(tl[hd[a]])!=ch)
+                                                     a=tl[a];
+                                                 if(a!=NIL)
+                                                     akap=datapair(get_id(tl[hd[a]]),0);
+                                             }
+                                             pn_val(ch)= ap(akap,fileinfo(CFN,0));
+                                             /* this will generate sensible error message
+                                              see reduction rule for DATAPAIR */
+                                         }
+                                defs=cons(ch,defs);
+                                continue;
+                            }
+                        if (id_type(stackp[-1])!=new_t && /* FIX1 */
+                            (id_type(stackp[-1])!=undef_t ||
+                             id_val(stackp[-1])!=UNDEF)) {/* nameclash */
+                            if(id_type(stackp[-1])==alias_t) {/* cyclic aliasing */
+                                word a=ALIASES;
+                                while(a!=NIL&&tl[hd[a]]!=stackp[-1])a=tl[a];
+                                if(a==NIL) {
+                                    fprintf(stderr,
+                                            "impossible event in cyclic alias (%s)\n",
+                                            get_id(stackp[-1]));
+                                    stackp-=4;
+                                    continue;
+                                }
+                                defs=cons(*--stackp,defs);
+                                hd[hd[hd[a]]]= *--stackp; /* who */
+                                hd[tl[hd[hd[a]]]]= *--stackp; /* type */
+                                tl[tl[hd[hd[a]]]]= *--stackp; /* value */
+                                continue;
+                            }
+                            /*if(strcmp(CFN,hd[get_here(stackp[-1])]))
+                             /* EXPT (ignore clash if from same original file) */
+                            CLASHES=add1(stackp[-1],CLASHES);
+                            stackp-=4;
+                        } else
+                            defs=cons(*--stackp,defs),
+                        /*printf("%s undumped\n",get_id(hd[defs])), /* DEBUG */
+                            id_who(hd[defs])= *--stackp,
+                            id_type(hd[defs])= *--stackp,
+                            id_val(hd[defs])= *--stackp;
+                        continue;
+                    default:
+                    { /* printf("badly formed def in dump\n"); /* DEBUG */
+                        BAD_DUMP=3; return(defs);
+                    } /* should unsetids */
+                } /* of switch */
+            case AP_X:
+                ch = *--stackp;
+                if (stackp[-1]==READ&&ch==0)stackp[-1] = common_stdin;
+                else if(stackp[-1]==READBIN&&ch==0)stackp[-1] = common_stdinb;
+                else
+                    stackp[-1] = ap(stackp[-1],ch);
+                continue;
+            case CONS_X:
+                ch = *--stackp;
+                stackp[-1] = cons(ch,stackp[-1]);
+                continue;
+            default:
+                *stackp++ = ch>127 ? ch+256 : ch;
+        }
+        
+    }
+    BAD_DUMP=4; /* should unsetids */
+    return(defs);
 }
 
 extern char *obsuffix;
 
-int okdump(t) /* return 1 if script t has a non-syntax-error dump */
-char *t;
-{ char obf[120];
+int okdump(char *t) /* return 1 if script t has a non-syntax-error dump */
+{
+    char obf[120];
   FILE *f;
   (void)strcpy(obf,t);
   (void)strcpy(obf+strlen(obf)-1,obsuffix);
