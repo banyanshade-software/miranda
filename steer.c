@@ -450,296 +450,312 @@ static int oldversion=0;
 #define colmax 400
 #define spaces(s) for(j=s;j>0;j--)putchar(' ')
 
-void announce()
-{ extern char *vdate;
-  word w,j;
-/*clrscr();  /* clear screen on start up */
-  w=(twidth()-50)/2;
-  printf("\n\n");
-  spaces(w); printf("   T h e   M i r a n d a   S y s t e m\n\n");
-  spaces(w+5-strlen(vdate)/2); 
-             printf("  version %s last revised %s\n\n",strvers(version),vdate);
-  spaces(w); printf("Copyright Research Software Ltd 1985-2020\n\n");
-  spaces(w); printf("  World Wide Web: http://miranda.org.uk\n\n\n");
-  if(SPACELIMIT!=DFLTSPACE)
-    printf("(%ld cells)\n",SPACELIMIT);
-  if(!strictif)printf("(-nostrictif : deprecated!)\n");
-/*printf("\t\t\t\t%dbit platform\n",__WORDSIZE); /* temporary */
-  if(oldversion<1999) /* pre release two */
-    printf("\
-WARNING:\n\
-a new release of Miranda has been installed since you last used\n\
-the system - please read the `CHANGES' section of the /man pages !!!\n\n");
-  else
-  if(version>oldversion)
-    printf("a new version of Miranda has been installed since you last\n"),
-    printf("used the system - see under `CHANGES' in the /man pages\n\n");
-  if(version<oldversion)
-    printf("warning - this is an older version of Miranda than the one\n"),
-    printf("you last used on this machine!!\n\n");
-  if(rc_error)
-    printf("warning: \"%s\" contained bad data (ignored)\n",rc_error);
+static void announce(void)
+{
+    extern char *vdate;
+    word w,j;
+    /*clrscr();  /* clear screen on start up */
+    w=(twidth()-50)/2;
+    printf("\n\n");
+    spaces(w); printf("   T h e   M i r a n d a   S y s t e m\n\n");
+    spaces(w+5-strlen(vdate)/2);
+    printf("  version %s last revised %s\n\n",strvers(version),vdate);
+    spaces(w); printf("Copyright Research Software Ltd 1985-2020\n\n");
+    spaces(w); printf("  World Wide Web: http://miranda.org.uk\n\n\n");
+    if(SPACELIMIT!=DFLTSPACE)
+        printf("(%ld cells)\n",SPACELIMIT);
+    if(!strictif)printf("(-nostrictif : deprecated!)\n");
+    /*printf("\t\t\t\t%dbit platform\n",__WORDSIZE); /* temporary */
+    if(oldversion<1999) /* pre release two */
+        printf("\
+               WARNING:\n\
+               a new release of Miranda has been installed since you last used\n\
+               the system - please read the `CHANGES' section of the /man pages !!!\n\n");
+    else
+        if(version>oldversion)
+            printf("a new version of Miranda has been installed since you last\n"),
+            printf("used the system - see under `CHANGES' in the /man pages\n\n");
+    if(version<oldversion)
+        printf("warning - this is an older version of Miranda than the one\n"),
+        printf("you last used on this machine!!\n\n");
+    if(rc_error)
+        printf("warning: \"%s\" contained bad data (ignored)\n",rc_error);
 }
 
 
-word rc_read(rcfile)  /* get settings of system parameters from setup file */
-char *rcfile;
-{ FILE *in;
-  char z[20];
-  word h,d,v,s,r=0;
-  oldversion=version;  /* default assumption */
-  in=fopen(rcfile,"r");
-  if(in==NULL||fscanf(in,"%19s",z)!=1)
-    return(0);  /* file not present, or not readable */
-  if(strncmp(z,"hdve",4)==0  /* current .mirarc format */
-     ||strcmp(z,"lhdve")==0) /* alternative format used at release one */
-    { char *z1 = &z[3];
-      if(z[0]=='l')listing=1,z1++;
-      while(*++z1)if(*z1=='l')listing=1; else
-		  if(*z1=='s') /* ignore */; else
-		  if(*z1=='r')rechecking=2; else
-		  rc_error=rcfile;
-      if(fscanf(in,"%ld%ld%ld%*c",&h,&d,&v)!=3||!getln(in,pnlim-1,ebuf)
-         ||badval(h)||badval(d)||badval(v))rc_error=rcfile;
-      else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
-           oldversion=v; } else
-  if(strcmp(z,"ehdsv")==0) /* versions before 550 */
-    { if(fscanf(in,"%19s%ld%ld%ld%ld",ebuf,&h,&d,&s,&v)!=5
-         ||badval(h)||badval(d)||badval(v))rc_error=rcfile;
-      else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
-           oldversion=v; } else
-  if(strcmp(z,"ehds")==0)  /* versions before 326, "s" was stacklimit (ignore) */
-    { if(fscanf(in,"%s%ld%ld%ld",ebuf,&h,&d,&s)!=4
-         ||badval(h)||badval(d))rc_error=rcfile;
-      else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
-           oldversion=1; }
-  else rc_error=rcfile; /* unrecognised format */
-  if(editor)fixeditor();
-  fclose(in);
-  return(r);
+static word rc_read(char *rcfile)  /* get settings of system parameters from setup file */
+{
+    FILE *in;
+    char z[20];
+    word h,d,v,s,r=0;
+    oldversion=version;  /* default assumption */
+    in=fopen(rcfile,"r");
+    if(in==NULL||fscanf(in,"%19s",z)!=1)
+        return(0);  /* file not present, or not readable */
+    if(strncmp(z,"hdve",4)==0  /* current .mirarc format */
+       ||strcmp(z,"lhdve")==0) { /* alternative format used at release one */
+        char *z1 = &z[3];
+        if(z[0]=='l')listing=1,z1++;
+        while(*++z1)if(*z1=='l') listing=1;
+        else if(*z1=='s') /* ignore */;
+        else  if(*z1=='r')rechecking=2;
+        else
+            rc_error=rcfile;
+        if(fscanf(in,"%ld%ld%ld%*c",&h,&d,&v)!=3||!getln(in,pnlim-1,ebuf)
+           ||badval(h)||badval(d)||badval(v)) rc_error=rcfile;
+        else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
+            oldversion=v;
+    } else if(strcmp(z,"ehdsv")==0) {/* versions before 550 */
+        if(fscanf(in,"%19s%ld%ld%ld%ld",ebuf,&h,&d,&s,&v)!=5
+           ||badval(h)||badval(d)||badval(v))rc_error=rcfile;
+        else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
+           oldversion=v;
+    } else if(strcmp(z,"ehds")==0) {  /* versions before 326, "s" was stacklimit (ignore) */
+        if(fscanf(in,"%s%ld%ld%ld",ebuf,&h,&d,&s)!=4
+           ||badval(h)||badval(d))rc_error=rcfile;
+        else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
+            oldversion=1;
+    } else rc_error=rcfile; /* unrecognised format */
+    if(editor)fixeditor();
+    fclose(in);
+    return(r);
 }
 
-void fixeditor()
-{ if(strcmp(editor,"vi")==0)editor="vi +!"; else
-  if(strcmp(editor,"pico")==0)editor="pico +!"; else
-  if(strcmp(editor,"nano")==0)editor="nano +!"; else
-  if(strcmp(editor,"joe")==0)editor="joe +!"; else
-  if(strcmp(editor,"jpico")==0)editor="jpico +!"; else
-  if(strcmp(editor,"vim")==0)editor="vim +!"; else
-  if(strcmp(editor,"gvim")==0)editor="gvim +! % &"; else
-  if(strcmp(editor,"emacs")==0)editor="emacs +! % &";
-  else { char *p=rindex(editor,'/');
-	 if(p==0)p=editor; else p++;
-	 if(strcmp(p,"vi")==0)strcat(p," +!");
-       }
-  if(rindex(editor,'&'))rechecking=2;
-  listing=badeditor();
+static void fixeditor(void)
+{
+    if(strcmp(editor,"vi")==0)editor="vi +!";
+    else if(strcmp(editor,"pico")==0)editor="pico +!";
+    else if(strcmp(editor,"nano")==0)editor="nano +!";
+    else  if(strcmp(editor,"joe")==0)editor="joe +!";
+    else if(strcmp(editor,"jpico")==0)editor="jpico +!";
+    else if(strcmp(editor,"vim")==0)editor="vim +!";
+    else if(strcmp(editor,"gvim")==0)editor="gvim +! % &";
+    else if(strcmp(editor,"emacs")==0)editor="emacs +! % &";
+    else { char *p=rindex(editor,'/');
+        if(p==0)p=editor; else p++;
+        if(strcmp(p,"vi")==0)strcat(p," +!");
+    }
+    if(rindex(editor,'&'))rechecking=2;
+    listing=badeditor();
 }
 
-int badeditor() /* does editor know how to open file at line? */
-{ char *p=index(editor,'!');
-  while(p&&p[-1]=='\\')p=index(p+1,'!');
-  return (baded = !p);
+static int badeditor(void) /* does editor know how to open file at line? */
+{
+    char *p=index(editor,'!');
+    while(p&&p[-1]=='\\')p=index(p+1,'!');
+    return (baded = !p);
 } 
 
-int getln(in,n,s) /* reads line (<=n chars) from in into s - returns 1 if ok */
-FILE *in;         /* the newline is discarded, and the result '\0' terminated */
-word n;
-char *s;
-{ while(n--&&(*s=getc(in))!='\n')s++;
-  if(*s!='\n'||n<0)return(0);
-  *s='\0';
-  return(1);
+int getln(FILE *in, word n, char *s) /* reads line (<=n chars) from in into s - returns 1 if ok */
+/* the newline is discarded, and the result '\0' terminated */
+{
+    while(n--&&(*s=getc(in))!='\n')s++;
+    if(*s!='\n'||n<0)return(0);
+    *s='\0';
+    return(1);
 }
 
-void rc_write()
-{ FILE *out=fopen(home_rc,"w");
-  if(out==NULL)
-    { fprintf(stderr,"warning: cannot write to \"%s\"\n",home_rc);
-      return; }
-  fprintf(out,"hdve");
-  if(listing)fputc('l',out);
-  if(rechecking==2)fputc('r',out);
-  fprintf(out," %ld %ld %ld %s\n",SPACELIMIT,DICSPACE,version,editor);
-  fclose(out);
+static void rc_write(void)
+{
+    FILE *out=fopen(home_rc,"w");
+    if(out==NULL) {
+        fprintf(stderr,"warning: cannot write to \"%s\"\n",home_rc);
+        return;
+    }
+    fprintf(out,"hdve");
+    if(listing)fputc('l',out);
+    if(rechecking==2)fputc('r',out);
+    fprintf(out," %ld %ld %ld %s\n",SPACELIMIT,DICSPACE,version,editor);
+    fclose(out);
 }
 
 word lastid=0; /* first inscope identifier of immediately preceding command */
 word rv_expr=0;
 
-void commandloop(initscript)
-char* initscript;
-{ int ch;
-  void reset();
-  extern word cook_stdin;
-  extern void obey(word);
-  char *lb;
-  if(setjmp(env)==0) /* returns here if interrupted, 0 means first time thru */
-    { if(magic){ undump(initscript); /* was loadfile() changed 26.11.2019
-                                        to allow dump of magic scripts in ".m"*/
-		 if(files==NIL||ND!=NIL||id_val(main_id)==UNDEF)
-	           /* files==NIL=>script absent or has syntax errors
-                      ND!=NIL=>script has type errors or undefined names
-                      all reported by undump() or loadfile() on new compile */
-		   { if(files!=NIL&&ND==NIL&&id_val(main_id)==UNDEF)
-                     fprintf(stderr,"%s: main not defined\n",initscript);
-                     fprintf(stderr,"mira: incorrect use of \"-exec\" flag\n");
-                     exit(1); }
-		 magic=0; obey(main_id); exit(0); }
-                 /* was obey(lastexp), change to magic scripts 19.11.2013 */
-      (void)signal(SIGINT,(sighandler)reset);
-      undump(initscript);
-      if(verbosity)printf("for help type /h\n"); }
-  for(;;)
-  { resetgcstats();
-    if(verbosity)printf("%s",promptstr);
-    ch = getchar();
-    if(rechecking&&src_update())loadfile(current_script);
-                   /* modified behaviour for `2-window' mode */
-    while(ch==' '||ch=='\t')ch=getchar();
-    switch(ch)
-    { case '?':  ch=getchar();
-		 if(ch=='?')
-		   { word x; char *aka=NULL;
-		     if(!token()&&!lastid)
-		       { printf("\7identifier needed after `\?\?'\n");
-			 ch=getchar(); /* '\n' */
-			 break; }
-		     if(getchar()!='\n'){ xschars(); break; }
-		     if(baded){ ed_warn(); break; }
-		     if(dicp[0])x=findid(dicp);
-		     else printf("??%s\n",get_id(lastid)),x=lastid;
-		     if(x==NIL||id_type(x)==undef_t)
-		       { diagnose(dicp[0]?dicp:get_id(lastid));
-			 lastid=0;
-		         break; }
-		     if(id_who(x)==NIL)
-		       { /* nb - primitives have NIL who field */
-			 printf("%s -- primitive to Miranda\n",
-		                dicp[0]?dicp:get_id(lastid));
-			 lastid=0;
-		         break; }
-		     lastid=x;
-		     x=id_who(x); /* get here info */
-		     if(tag[x]==CONS)aka=(char *)hd[hd[x]],x=tl[x];
-		     if(aka)printf("originally defined as \"%s\"\n",
-			           aka);
-		     editfile((char *)hd[x],tl[x]);
-		     break; }
-		 ungetc(ch,stdin);
-		 (void)token();
-		 lastid=0;
-		 if(dicp[0]=='\0')
-		   { if(getchar()!='\n')xschars();
-		     else allnamescom();
-		     break; }
-		 while(dicp[0])finger(dicp),(void)token();
-                 ch=getchar();
-                 break;
-      case ':':  /* add (silently) as kindness to Hugs users */
-      case '/':  (void)token();
-		 lastid=0;
-		 command();
-                 break;
-      case '!':  if(!(lb=rdline()))break; /* rdline returns NULL on failure */
-		 lastid=0;
-		 if(*lb)
-		   { /*system(lb); */ /* always gives /bin/sh */
-		     static char *shell=NULL;
-		     sighandler oldsig;
-		     word pid;
-		     if(!shell)
-		       { shell=getenv("SHELL");
-		         if(!shell)shell="/bin/sh"; }
-                     oldsig= signal(SIGINT,SIG_IGN);
-                     if(pid=fork())
-                       { /* parent */
-                         if(pid==-1)
-	                   perror("UNIX error - cannot create process");
-                         while(pid!=wait(0));
-			 (void)signal(SIGINT,oldsig); }
-                     else execl(shell,shell,"-c",lb,(char *)0);
-                     if(src_update())loadfile(current_script); }
-		 else printf(
-		      "No previous shell command to substitute for \"!\"\n");
-                 break;
-      case '|':  /* lines beginning "||" are comments */
-		 if((ch=getchar())!='|')
+static void commandloop(char *initscript)
+{
+    int ch;
+    void reset();
+    extern word cook_stdin;
+    extern void obey(word);
+    char *lb;
+    if(setjmp(env)==0) {/* returns here if interrupted, 0 means first time thru */
+        if(magic) {
+            undump(initscript); /* was loadfile() changed 26.11.2019
+                                 to allow dump of magic scripts in ".m"*/
+            if(files==NIL||ND!=NIL||id_val(main_id)==UNDEF) {
+                /* files==NIL=>script absent or has syntax errors
+                 ND!=NIL=>script has type errors or undefined names
+                 all reported by undump() or loadfile() on new compile */
+                if(files!=NIL&&ND==NIL&&id_val(main_id)==UNDEF)
+                    fprintf(stderr,"%s: main not defined\n",initscript);
+                fprintf(stderr,"mira: incorrect use of \"-exec\" flag\n");
+                exit(1);
+            }
+            magic=0; obey(main_id); exit(0);
+        }
+        /* was obey(lastexp), change to magic scripts 19.11.2013 */
+        (void)signal(SIGINT,(sighandler)reset);
+        undump(initscript);
+        if(verbosity)printf("for help type /h\n"); }
+    for(;;) {
+        resetgcstats();
+        if(verbosity)printf("%s",promptstr);
+        ch = getchar();
+        if(rechecking&&src_update())loadfile(current_script);
+        /* modified behaviour for `2-window' mode */
+        while(ch==' '||ch=='\t')ch=getchar();
+        switch(ch) {
+            case '?':  ch=getchar();
+                if(ch=='?') {
+                    word x; char *aka=NULL;
+                    if(!token()&&!lastid) {
+                        printf("\7identifier needed after `\?\?'\n");
+                        ch=getchar(); /* '\n' */
+                        break;
+                    }
+                    if(getchar()!='\n'){ xschars(); break; }
+                    if(baded){ ed_warn(); break; }
+                    if(dicp[0])x=findid(dicp);
+                    else printf("??%s\n",get_id(lastid)),x=lastid;
+                    if(x==NIL||id_type(x)==undef_t)  { diagnose(dicp[0]?dicp:get_id(lastid));
+                        lastid=0;
+                        break;
+                    }
+                    if(id_who(x)==NIL)  { /* nb - primitives have NIL who field */
+                        printf("%s -- primitive to Miranda\n",
+                               dicp[0]?dicp:get_id(lastid));
+                        lastid=0;
+                        break;
+                    }
+                    lastid=x;
+                    x=id_who(x); /* get here info */
+                    if(tag[x]==CONS)aka=(char *)hd[hd[x]],x=tl[x];
+                    if(aka)printf("originally defined as \"%s\"\n",
+                                  aka);
+                    editfile((char *)hd[x],tl[x]);
+                    break;
+                }
+                ungetc(ch,stdin);
+                (void)token();
+                lastid=0;
+                if(dicp[0]=='\0') {
+                    if(getchar()!='\n')xschars();
+                    else allnamescom();
+                    break;
+                }
+                while(dicp[0])finger(dicp),(void)token();
+                ch=getchar();
+                break;
+            case ':':  /* add (silently) as kindness to Hugs users */
+            case '/':  (void)token();
+                lastid=0;
+                command();
+                break;
+            case '!':  if(!(lb=rdline()))break; /* rdline returns NULL on failure */
+                lastid=0;
+                if(*lb) { /*system(lb); */ /* always gives /bin/sh */
+                    static char *shell=NULL;
+                    sighandler oldsig;
+                    word pid;
+                    if(!shell)  {
+                        shell=getenv("SHELL");
+                        if(!shell)shell="/bin/sh"; }
+                    oldsig= signal(SIGINT,SIG_IGN);
+                    if(pid=fork()) { /* parent */
+                        if(pid==-1)
+                            perror("UNIX error - cannot create process");
+                        while(pid!=wait(0));
+                        (void)signal(SIGINT,oldsig);
+                    } else execl(shell,shell,"-c",lb,(char *)0);
+                    if(src_update())loadfile(current_script);
+                } else printf("No previous shell command to substitute for \"!\"\n");
+                break;
+            case '|':  /* lines beginning "||" are comments */
+                if((ch=getchar())!='|')
                     printf("\7unknown command - type /h for help\n");
-		 while(ch!='\n'&&ch!=EOF)ch=getchar();
-      case '\n': break;
-      case EOF:  if(verbosity)printf("\nmiranda logout\n");
-                 exit(0);
-      default: ungetc(ch,stdin);
-	       lastid=0;
-	       tl[hd[cook_stdin]]=0; /* unset type of $+ */
-	       rv_expr=0;
-               c = EVAL;
-	       echoing=0;
-	       polyshowerror=0; /* gets set by wrong use of $+, readvals */
-               commandmode=1;
-               yyparse();
-	       if(SYNERR)SYNERR=0;
-	       else if(c!='\n')  /* APPARENTLY NEVER TRUE */
-		    { printf("syntax error\n");
-	              while(c!='\n'&&c!=EOF)
-			   c=getchar(); /* swallow syntax errors */
-		    }
-	       commandmode=0;
-               echoing=verbosity&listing;
-}}}
-
-word parseline(t,f,fil) /* parses next valid line of f at type t, returns EOF
-		      if none found.  See READVALS in reduce.c */
-word t;
-FILE *f;
-word fil;
-{ word t1,ch;
-  lastexp=UNDEF;
-  for(;;)
-  { ch=getc(f);
-    while(ch==' '||ch=='\t'||ch=='\n')ch=getc(f);
-    if(ch=='|')
-       { ch=getc(f);
-	 if(ch=='|') /* leading comment */
-	   { while((ch=getc(f))!='\n'&&ch!=EOF); 
-	     if(ch!=EOF)continue; }
-	 else ungetc(ch,f); }
-    if(ch==EOF)return(EOF);
-    ungetc(ch,f);
-    c = VALUE;
-    echoing=0;
-    commandmode=1;
-    s_in=f;
-    yyparse();
-    s_in=stdin;
-    if(SYNERR)SYNERR=0,lastexp=UNDEF; else
-    if((t1=type_of(lastexp))==wrong_t)lastexp=UNDEF; else
-    if(!subsumes(instantiate(t1),t))
-      { printf("data has wrong type :: "), out_type(t1),
-        printf("\nshould be :: "), out_type(t), putc('\n',stdout);
-        lastexp=UNDEF; }
-    if(lastexp!=UNDEF)return(codegen(lastexp));
-    if(isatty(fileno(f)))printf("please re-enter data:\n");
-    else { if(fil)fprintf(stderr,"readvals: bad data in file \"%s\"\n",
-			                 getstring(fil,0));
-	   else fprintf(stderr,"bad data in $+ input\n");
-	   outstats(); exit(1); } 
-}}
-
-void ed_warn()
-{ printf(
-"The currently installed editor command, \"%s\", does not\n\
-include a facility for opening a file at a specified line number.  As a\n\
-result the `\?\?' command and certain other features of the Miranda system\n\
-are disabled.  See manual section 31/5 on changing the editor for more\n\
-information.\n",editor);
+                while(ch!='\n'&&ch!=EOF)ch=getchar();
+            case '\n': break;
+            case EOF:
+                if(verbosity)printf("\nmiranda logout\n");
+                exit(0);
+            default:
+                ungetc(ch,stdin);
+                lastid=0;
+                tl[hd[cook_stdin]]=0; /* unset type of $+ */
+                rv_expr=0;
+                c = EVAL;
+                echoing=0;
+                polyshowerror=0; /* gets set by wrong use of $+, readvals */
+                commandmode=1;
+                yyparse();
+                if(SYNERR)SYNERR=0;
+                else if(c!='\n') { /* APPARENTLY NEVER TRUE */
+                    printf("syntax error\n");
+                    while(c!='\n'&&c!=EOF)
+                        c=getchar(); /* swallow syntax errors */
+                }
+                commandmode=0;
+                echoing=verbosity&listing;
+        }
+    }
 }
 
-word fm_time(f) /* time last modified of file f */
-char *f;
-{ return(stat(f,&buf)==0?buf.st_mtime:0);
-  /* non-existent file has conventional mtime of 0 */
+word parseline(word t, FILE *f, word fil) /* parses next valid line of f at type t, returns EOF
+		      if none found.  See READVALS in reduce.c */
+{
+    word t1,ch;
+    lastexp=UNDEF;
+    for(;;) {
+        ch=getc(f);
+        while(ch==' '||ch=='\t'||ch=='\n')ch=getc(f);
+        if(ch=='|') {
+            ch=getc(f);
+            if(ch=='|') {/* leading comment */
+                while((ch=getc(f))!='\n'&&ch!=EOF);
+                if(ch!=EOF)continue;
+            } else ungetc(ch,f);
+        }
+        if (ch==EOF) return(EOF);
+        ungetc(ch,f);
+        c = VALUE;
+        echoing=0;
+        commandmode=1;
+        s_in=f;
+        yyparse();
+        s_in=stdin;
+        if(SYNERR)SYNERR=0,lastexp=UNDEF;
+        else if((t1=type_of(lastexp))==wrong_t)lastexp=UNDEF;
+        else if(!subsumes(instantiate(t1),t)) {
+            printf("data has wrong type :: "), out_type(t1),
+            printf("\nshould be :: "), out_type(t), putc('\n',stdout);
+            lastexp=UNDEF;
+        }
+        if(lastexp!=UNDEF)return(codegen(lastexp));
+        if(isatty(fileno(f)))printf("please re-enter data:\n");
+        else {
+            if (fil)fprintf(stderr,"readvals: bad data in file \"%s\"\n",
+                           getstring(fil,0));
+            else fprintf(stderr,"bad data in $+ input\n");
+            outstats(); exit(1);
+        }
+    }
+}
+
+static void ed_warn(void)
+{
+    printf(
+           "The currently installed editor command, \"%s\", does not\n\
+           include a facility for opening a file at a specified line number.  As a\n\
+           result the `\?\?' command and certain other features of the Miranda system\n\
+           are disabled.  See manual section 31/5 on changing the editor for more\n\
+           information.\n",editor);
+}
+
+word fm_time(char *f) /* time last modified of file f */
+{
+    return(stat(f,&buf)==0?buf.st_mtime:0);
+    /* non-existent file has conventional mtime of 0 */
 } /* we assume time_t can be stored in a word */
 
 #define same_file(x,y) (hd[fil_inodev(x)]==hd[fil_inodev(y)]&& \
@@ -749,467 +765,529 @@ char *f;
 
 word oldfiles=NIL; /* most recent set of sources, in case of interrupted or
                                                        failed compilation */
-int src_update() /* any sources modified ? */
-{ word ft,f=files==NIL?oldfiles:files;
-  while(f!=NIL)
-  { if((ft=fm_time(get_fil(hd[f])))!=fil_time(hd[f]))
-      { if(ft==0)unlinkx(get_fil(hd[f])); /* tidy up after eg `!rm %' */
-	return(1); }
-    f=tl[f]; }
-  return(0);
+static int src_update(void) /* any sources modified ? */
+{
+    word ft,f=files==NIL?oldfiles:files;
+    while(f!=NIL) {
+        if((ft=fm_time(get_fil(hd[f])))!=fil_time(hd[f])) {
+            if(ft==0)unlinkx(get_fil(hd[f])); /* tidy up after eg `!rm %' */
+            return(1);
+        }
+        f=tl[f];
+    }
+    return(0);
 }
 
 int loading;
 char *unlinkme; /* if set, is name of partially created obfile */
 
-void reset() /* interrupt catcher - see call to signal in commandloop */
-{ extern word lineptr,ATNAMES,current_id;
-  extern int blankerr,collecting;
-  /*if(!making)  /* see note below
-    (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
-/*if(magic)exit(0); *//* signal now not set to reset in magic scripts */
-  if(collecting)gcpatch();
-  if(loading)
-    { if(!blankerr)
-	printf("\n<<compilation interrupted>>\n");
-      if(unlinkme)unlink(unlinkme);
-      /* stackp=dstack; /* add if undump() made interruptible later*/
-      oldfiles=files,unload(),current_id=ATNAMES=loading=SYNERR=lineptr=0;
-      if(blankerr)blankerr=0,makedump(); }
-      /* magic script cannot be literate so no guard needed on makedump */
-  else printf("<<interrupt>>\n"); /* VAX, SUN, ^C does not cause newline */
-  reset_state(); /* see LEX */
-  if(collecting)collecting=0,gc(); /* to mark stdenv etc as wanted */
-  if(making&&!make_status)make_status=1;
+void reset(void) /* interrupt catcher - see call to signal in commandloop */
+{
+    extern word lineptr,ATNAMES,current_id;
+    extern int blankerr,collecting;
+    /*if(!making)  /* see note below
+     (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
+    /*if(magic)exit(0); *//* signal now not set to reset in magic scripts */
+    if(collecting)gcpatch();
+    if(loading) {
+        if(!blankerr)
+            printf("\n<<compilation interrupted>>\n");
+        if(unlinkme)unlink(unlinkme);
+        /* stackp=dstack; /* add if undump() made interruptible later*/
+        oldfiles=files,unload(),current_id=ATNAMES=loading=SYNERR=lineptr=0;
+        if(blankerr)blankerr=0,makedump();
+    }
+    /* magic script cannot be literate so no guard needed on makedump */
+    else printf("<<interrupt>>\n"); /* VAX, SUN, ^C does not cause newline */
+    reset_state(); /* see LEX */
+    if(collecting)collecting=0,gc(); /* to mark stdenv etc as wanted */
+    if(making&&!make_status)make_status=1;
 #ifdef SYSTEM5
-  else (void)signal(SIGINT,(sighandler)reset);/*ready for next interrupt*//*see note*/
+    else (void)signal(SIGINT,(sighandler)reset);/*ready for next interrupt*//*see note*/
 #endif
-  /* during mira -make blankerr is only use of reset */
-  longjmp(env,1);
+    /* during mira -make blankerr is only use of reset */
+    longjmp(env,1);
 }/* under BSD and Linux installed signal remains installed after interrupt
     and further signals blocked until handler returns */
 
 #define checkeol if(getchar()!='\n')break;
 
-int lose;
+static int lose;
 
-int normal(f) /* s has ".m" suffix */
-char *f;
-{ int n=strlen(f);
-  return n>=2&&strcmp(f+n-2,".m")==0;
+static int normal(char *f) /* s has ".m" suffix */
+{
+    int n=strlen(f);
+    return n>=2&&strcmp(f+n-2,".m")==0;
 }
 
-void v_info(int full)
-{ printf("%s last revised %s\n",strvers(version),vdate);
-  if(!full)return;
-  printf("%s",host);
-  printf("XVERSION %u\n",XVERSION);
+static void v_info(int full)
+{
+    printf("%s last revised %s\n",strvers(version),vdate);
+    if(!full)return;
+    printf("%s",host);
+    printf("XVERSION %u\n",XVERSION);
 }
 
-void command()
-{ char *t;
-  int ch,ch1;
-  switch(dicp[0])
-  {
-   case 'a': if(is("a")||is("aux"))
-	       { checkeol; 
-/*               if(verbosity)clrscr(); */
-                 (void)strcpy(linebuf,miralib);
-		 (void)strcat(linebuf,"/auxfile");
-		 filecopy(linebuf); 
-		 return; }
-   case 'c': if(is("count"))
-               { checkeol; atcount=1; return; }
-	     if(is("cd"))
-	       { char *d=token();
-		 if(!d)d=getenv("HOME");
-		 else d=addextn(0,d);
-		 checkeol;
-		 if(chdir(d)==-1)printf("cannot cd to %s\n",d);
-                 else if(src_update())undump(current_script);
-		      /* alternative: keep old script and recompute pathname
-			 wrt new directory - LOOK INTO THIS LATER */
-		 return; }
-   case 'd': if(is("dic"))
-	       { extern char *dic;
-		 if(!token())
-		   { lose=getchar(); /* to eat \n */
-		     printf("%ld chars",DICSPACE);
-		     if(DICSPACE!=DFLTDICSPACE)
-		       printf(" (default=%ld)",DFLTDICSPACE);
-		     printf(" %ld in use\n",(long)(dicq-dic));
-		     return; }
-		 checkeol;
-		 printf(
-		 "sorry, cannot change size of dictionary while in use\n");
-		 printf(
-		 "(/q and reinvoke with flag: mira -dic %s ... )\n",dicp);
-		 return; }
-   case 'e': if(is("e")||is("edit"))
-               { char *mf=0;
-		 if(t=token())t=addextn(1,t);
-		 else t=current_script;
-                 checkeol;
-	         if(stat(t,&buf)) /* new file */
-		   { if(!lmirahdr) /* lazy initialisation */
-		       { dicp=dicq;
-			 (void)strcpy(dicp,getenv("HOME"));
-                         if(strcmp(dicp,"/")==0)
-			   dicp[0]=0; /* root is special case */
-			 (void)strcat(dicp,"/.mirahdr");
-			 lmirahdr=dicp;
-			 dicq=dicp=dicp+strlen(dicp)+1; } /* ovflo check? */
-		     if(!stat(lmirahdr,&buf))mf=lmirahdr;
-		     if(!mf&&!mirahdr) /* lazy initialisation */
-		       { dicp=dicq;
-			 (void)strcpy(dicp,miralib);
-			 (void)strcat(dicp,"/.mirahdr");
-			 mirahdr=dicp;
-			 dicq=dicp=dicp+strlen(dicp)+1; }
-		     if(!mf&&!stat(mirahdr,&buf))mf=mirahdr;
-	             /*if(mf)printf("mf=%s\n",mf); /* DEBUG*/
-		     if(mf&&t!=current_script)
-		       { printf("open new script \"%s\"? [ny]",t);
-		         ch1=ch=getchar();
-		         while(ch!='\n'&&ch!=EOF)ch=getchar();
-		         /*eat rest of line */
-			 if(ch1!='y'&&ch1!='Y')return; }
-		     if(mf)filecp(mf,t); }
-		 editfile(t,strcmp(t,current_script)==0?errline:
-			    errs&&strcmp(t,(char *)hd[errs])==0?tl[errs]:
-			    geterrlin(t));
-		 return; }
-	     if(is("editor"))
-	       { char *hold=linebuf,*h;
-		 if(!getln(stdin,pnlim-1,hold))break; /*reject if too long*/
-		 if(!*hold)
-		   { /* lose=getchar(); /* to eat newline */
-		     printf("%s\n",editor);
-		     return; }
-		 h=hold+strlen(hold); /* remove trailing white space */
-		 while(h[-1]==' '||h[-1]=='\t')*--h='\0';
-                 if(*hold=='"'||*hold=='\'')
-                   { printf("please type name of editor without quotation marks\n");
-                     return; }
-		 printf("change editor to: \"%s\"? [ny]",hold);
-		 ch1=ch=getchar();
-		 while(ch!='\n'&&ch!=EOF)ch=getchar(); /* eat rest of line */
-		 if(ch1!='y'&&ch1!='Y')
-		   { printf("editor not changed\n");
-		     return; }
-		 (void)strcpy(ebuf,hold);
-		 editor=ebuf;
-		 fixeditor();  /* reads "vi" as "vi +!" etc */
-		 echoing=verbosity&listing;
-		 rc_write();
-		 printf("editor = %s\n",editor);
-		 return; }
-   case 'f': if(is("f")||is("file"))
-               { char *t=token();
-                 checkeol;
-		 if(t)t=addextn(1,t),keep(t);
-                 /* could get multiple copies of filename in dictionary
-		    - FIX LATER */
-		 if(t)errs=errline=0; /* moved here from reset() */
-		 if(t)if(strcmp(t,current_script)||files==NIL&&okdump(t))
-			{ extern word CLASHES;
-			  CLASHES=NIL;  /* normally done by load_script */
-			  undump(t); /* does not always call load_script */
-			  if(CLASHES!=NIL)/* pathological case, recompile */
-			    loadfile(t); }
-		      else loadfile(t); /* force recompilation */
-		 else printf("%s%s\n",current_script,
-				      files==NIL?" (not loaded)":"");
-                 return; }
-	     if(is("files")) /* info about internal state, not documented */
-	       { word f=files;
-		 checkeol;
-		 for(;f!=NIL;f=tl[f])
-		 printf("(%s,%ld,%ld)",get_fil(hd[f]),fil_time(hd[f]),
-			fil_share(hd[f])),printlist("",fil_defs(hd[f]));
-	         return; } /* DEBUG */
-	     if(is("find"))
-	       { word i=0;
-		 while(token())
-		      { word x=findid(dicp),y,f;
-			i++;
-			if(x!=NIL)
-			{ char *n=get_id(x);
-			  for(y=primenv;y!=NIL;y=tl[y])
-			  if(tag[hd[y]]==ID)
-			  if(hd[y]==x||getaka(hd[y])==n)
-			    finger(get_id(hd[y]));
-			  for(f=files;f!=NIL;f=tl[f])
-			  for(y=fil_defs(hd[f]);y!=NIL;y=tl[y])
-			  if(tag[hd[y]]==ID)
-			  if(hd[y]==x||getaka(hd[y])==n)
-			    finger(get_id(hd[y])); }
-	              }
-                 ch=getchar(); /* '\n' */
-		 if(i==0)printf("\7identifier needed after `/find'\n");
-		 return; }
-   case 'g': if(is("gc"))
-               { checkeol; atgc=1; return; }
-   case 'h': if(is("h")||is("help"))
-               { checkeol; 
-/*               if(verbosity)clrscr(); */
-                 (void)strcpy(linebuf,miralib);
-		 (void)strcat(linebuf,"/helpfile");
-		 filecopy(linebuf); 
-		 return; }
-	     if(is("heap"))
-	       { word x;
-		 if(!token())
-		   { lose=getchar(); /* to eat \n */
-		     printf("%ld cells",SPACELIMIT);
-		     if(SPACELIMIT!=DFLTSPACE)
-		       printf(" (default=%ld)",DFLTSPACE);
-		     printf("\n");
-		     return; }
-		 checkeol;
-		 if(sscanf(dicp,"%ld",&x)!=1||badval(x))
-		   { printf("illegal value (heap unchanged)\n"); return; }
-		 if(x<trueheapsize())
-		   printf("sorry, cannot shrink heap to %ld at this time\n",x);
-		 else { if(x!=SPACELIMIT)
-			  SPACELIMIT=x,resetheap();
-			printf("heaplimit = %ld cells\n",SPACELIMIT),
-		        rc_write(); }
-		 return; }
-             if(is("hush"))
-               { checkeol; echoing=verbosity=0; return; }
-   case 'l': if(is("list"))
-	       { checkeol; listing=1; echoing=verbosity&listing; 
-		 rc_write(); return; }
-   case 'm': if(is("m")||is("man"))
-	       { checkeol; manaction(); return; }
-	     if(is("miralib"))
-	       { checkeol; printf("%s\n",miralib); return; }
-   case 'n': /* if(is("namebuckets"))
-	       { int i,x;
-		 extern word namebucket[];
-	         checkeol;
-		 for(i=0;i<128;i++)
-		 if(x=namebucket[i])
-		   { printf("%d:",i);
-		     while(x)
-			  putchar(' '),out(stdout,hd[x]),x=tl[x];
-		     putchar('\n'); }
-		 return; }              /* DEBUG */
-             if(is("nocount"))
-               { checkeol; atcount=0; return; }
-             if(is("nogc"))
-               { checkeol; atgc=0; return; }
-             if(is("nohush"))
-               { checkeol; echoing=listing; verbosity=1; return; }
-             if(is("nolist"))
-	       { checkeol; echoing=listing=0; rc_write(); return; }
-             if(is("norecheck"))
-	       { checkeol; rechecking=0; rc_write(); return; }
-/* case 'o': if(is("object"))
-               { checkeol; atobject=1; return; } /* now done by flag -object */
-   case 'q': if(is("q")||is("quit"))
-               { checkeol; if(verbosity)printf("miranda logout\n"); exit(0); }
-   case 'r': if(is("recheck"))
-               { checkeol; rechecking=2; rc_write(); return; }
-   case 's': if(is("s")||is("settings"))
-	       { checkeol;
-		 printf("*\theap %ld\n",SPACELIMIT);
-	         printf("*\tdic %ld\n",DICSPACE);
-	         printf("*\teditor = %s\n",editor);
-		 printf("*\t%slist\n",listing?"":"no");
-		 printf("*\t%srecheck\n",rechecking?"":"no");
-		 if(!strictif)
-                   printf("\t-nostrictif (deprecated!)\n");
-		 if(atcount)printf("\tcount\n");
-		 if(atgc)printf("\tgc\n");
-	  	 if(UTF8)printf("\tUTF-8 i/o\n");
-		 if(!verbosity)printf("\thush\n");
-		 if(debug)printf("\tdebug 0%o\n",debug);
-                 printf("\n* items remembered between sessions\n");
-		 return; }
-   case 'v': if(is("v")||is("version"))
-	       { checkeol; 
-                 v_info(0);
-		 return; }
-   case 'V': if(is("V"))
-               { checkeol;
-                 v_info(1);
-	         return; }
-   default: printf("\7unknown command \"%c%s\"\n",(int)c,dicp);
+static void command(void)
+{
+    char *t;
+    int ch,ch1;
+    switch(dicp[0]) {
+        case 'a':
+            if(is("a")||is("aux")) {
+                checkeol;
+                /*               if(verbosity)clrscr(); */
+                (void)strcpy(linebuf,miralib);
+                (void)strcat(linebuf,"/auxfile");
+                filecopy(linebuf);
+                return;
+            }
+        case 'c':
+            if(is("count")) {
+                checkeol; atcount=1; return;
+            }
+            if(is("cd")) {
+                char *d=token();
+                if (!d) d=getenv("HOME");
+                else d=addextn(0,d);
+                checkeol;
+                if(chdir(d)==-1) printf("cannot cd to %s\n",d);
+                else if (src_update()) undump(current_script);
+                /* alternative: keep old script and recompute pathname
+                 wrt new directory - LOOK INTO THIS LATER */
+                return;
+            }
+        case 'd':
+            if(is("dic")) {
+                extern char *dic;
+                if(!token()) { lose=getchar(); /* to eat \n */
+                    printf("%ld chars",DICSPACE);
+                    if(DICSPACE!=DFLTDICSPACE)
+                        printf(" (default=%ld)",DFLTDICSPACE);
+                    printf(" %ld in use\n",(long)(dicq-dic));
+                    return;
+                }
+                checkeol;
+                printf("sorry, cannot change size of dictionary while in use\n");
+                printf("(/q and reinvoke with flag: mira -dic %s ... )\n",dicp);
+                return;
+            }
+        case 'e': if(is("e")||is("edit")) {
+            char *mf=0;
+            if(t=token())t=addextn(1,t);
+            else t=current_script;
+            checkeol;
+            if(stat(t,&buf)) { /* new file */
+                if(!lmirahdr) { /* lazy initialisation */
+                    dicp=dicq;
+                    (void)strcpy(dicp,getenv("HOME"));
+                    if (strcmp(dicp,"/")==0)
+                        dicp[0]=0; /* root is special case */
+                    (void)strcat(dicp,"/.mirahdr");
+                    lmirahdr=dicp;
+                    dicq=dicp=dicp+strlen(dicp)+1;
+                } /* ovflo check? */
+                if(!stat(lmirahdr,&buf))mf=lmirahdr;
+                if(!mf&&!mirahdr) {/* lazy initialisation */
+                    dicp=dicq;
+                    (void)strcpy(dicp,miralib);
+                    (void)strcat(dicp,"/.mirahdr");
+                    mirahdr=dicp;
+                    dicq=dicp=dicp+strlen(dicp)+1;
+                }
+                if(!mf&&!stat(mirahdr,&buf)) mf=mirahdr;
+                /*if(mf)printf("mf=%s\n",mf); /* DEBUG*/
+                if (mf&&t!=current_script) {
+                    printf("open new script \"%s\"? [ny]",t);
+                    ch1=ch=getchar();
+                    while(ch!='\n'&&ch!=EOF)ch=getchar();
+                    /*eat rest of line */
+                    if(ch1!='y'&&ch1!='Y')return;
+                }
+                if(mf)filecp(mf,t);
+            }
+            editfile(t,strcmp(t,current_script)==0?errline:
+                     errs&&strcmp(t,(char *)hd[errs])==0?tl[errs]:
+                     geterrlin(t));
+            return;
+        }
+            if (is("editor")) {
+                char *hold=linebuf,*h;
+                if(!getln(stdin,pnlim-1,hold))break; /*reject if too long*/
+                if(!*hold)  { /* lose=getchar(); /* to eat newline */
+                    printf("%s\n",editor);
+                    return;
+                }
+                h=hold+strlen(hold); /* remove trailing white space */
+                while(h[-1]==' '||h[-1]=='\t')*--h='\0';
+                if (*hold=='"'||*hold=='\'') {
+                    printf("please type name of editor without quotation marks\n");
+                    return;
+                }
+                printf("change editor to: \"%s\"? [ny]",hold);
+                ch1=ch=getchar();
+                while (ch!='\n'&&ch!=EOF) ch=getchar(); /* eat rest of line */
+                if(ch1!='y'&&ch1!='Y') { printf("editor not changed\n");
+                    return;
+                }
+                (void)strcpy(ebuf,hold);
+                editor=ebuf;
+                fixeditor();  /* reads "vi" as "vi +!" etc */
+                echoing=verbosity&listing;
+                rc_write();
+                printf("editor = %s\n",editor);
+                return;
+            }
+        case 'f':
+            if(is("f")||is("file")) {
+                char *t=token();
+                checkeol;
+                if (t) t=addextn(1,t),keep(t);
+                /* could get multiple copies of filename in dictionary
+                 - FIX LATER */
+                if(t)errs=errline=0; /* moved here from reset() */
+                if(t) if(strcmp(t,current_script)||files==NIL&&okdump(t)) {
+                    extern word CLASHES;
+                    CLASHES=NIL;  /* normally done by load_script */
+                    undump(t); /* does not always call load_script */
+                    if(CLASHES!=NIL)/* pathological case, recompile */
+                        loadfile(t);
+                }
+                else loadfile(t); /* force recompilation */
+                else printf("%s%s\n",current_script,
+                            files==NIL?" (not loaded)":"");
+                return;
+            }
+            if(is("files")) { /* info about internal state, not documented */
+                word f=files;
+                checkeol;
+                for(;f!=NIL;f=tl[f])
+                printf("(%s,%ld,%ld)",get_fil(hd[f]),fil_time(hd[f]),
+                       fil_share(hd[f])),printlist("",fil_defs(hd[f]));
+                return;
+            } /* DEBUG */
+            if(is("find"))  {
+                word i=0;
+                while(token())  {
+                    word x=findid(dicp),y,f;
+                    i++;
+                    if(x!=NIL) {
+                        char *n=get_id(x);
+                        for(y=primenv;y!=NIL;y=tl[y])
+                        if(tag[hd[y]]==ID)
+                            if(hd[y]==x||getaka(hd[y])==n)
+                                finger(get_id(hd[y]));
+                        for(f=files;f!=NIL;f=tl[f])
+                        for(y=fil_defs(hd[f]);y!=NIL;y=tl[y])
+                        if(tag[hd[y]]==ID)
+                            if(hd[y]==x||getaka(hd[y])==n)
+                                finger(get_id(hd[y]));
+                    }
+                }
+                ch=getchar(); /* '\n' */
+                if(i==0)printf("\7identifier needed after `/find'\n");
+                return;
+            }
+        case 'g':
+            if (is("gc")) {
+                checkeol; atgc=1; return;
+            }
+        case 'h':
+            if(is("h")||is("help")) {
+                checkeol;
+                /*               if(verbosity)clrscr(); */
+                (void)strcpy(linebuf,miralib);
+                (void)strcat(linebuf,"/helpfile");
+                filecopy(linebuf);
+                return;
+            }
+            if(is("heap"))  { word x;
+                if(!token()) { lose=getchar(); /* to eat \n */
+                    printf("%ld cells",SPACELIMIT);
+                    if(SPACELIMIT!=DFLTSPACE)
+                        printf(" (default=%ld)",DFLTSPACE);
+                    printf("\n");
+                    return;
+                }
+                checkeol;
+                if(sscanf(dicp,"%ld",&x)!=1||badval(x)) {
+                    printf("illegal value (heap unchanged)\n"); return;
+                }
+                if(x<trueheapsize())
+                    printf("sorry, cannot shrink heap to %ld at this time\n",x);
+                else {
+                    if(x!=SPACELIMIT)
+                        SPACELIMIT=x,resetheap();
+                    printf("heaplimit = %ld cells\n",SPACELIMIT),
+                    rc_write();
+                }
+                return;
+            }
+            if(is("hush")) {
+                checkeol; echoing=verbosity=0; return;
+            }
+        case 'l':
+            if(is("list")) {
+                checkeol; listing=1; echoing=verbosity&listing;
+                rc_write(); return;
+            }
+        case 'm':
+            if(is("m")||is("man")) {
+                checkeol; manaction(); return;
+            }
+            if(is("miralib")) {
+                checkeol; printf("%s\n",miralib); return;
+            }
+        case 'n':
+            /* if(is("namebuckets"))
+             { int i,x;
+             extern word namebucket[];
+             checkeol;
+             for(i=0;i<128;i++)
+             if(x=namebucket[i])
+             { printf("%d:",i);
+             while(x)
+             putchar(' '),out(stdout,hd[x]),x=tl[x];
+             putchar('\n'); }
+             return; }              /* DEBUG */
+            if(is("nocount")) {
+                checkeol; atcount=0; return;
+            }
+            if(is("nogc")) {
+                checkeol; atgc=0; return;
+            }
+            if(is("nohush")) {
+                checkeol; echoing=listing; verbosity=1; return;
+            }
+            if(is("nolist")) {
+                checkeol; echoing=listing=0; rc_write(); return;
+            }
+            if(is("norecheck"))  {
+                checkeol; rechecking=0; rc_write(); return;
+            }
+            /* case 'o': if(is("object"))
+             { checkeol; atobject=1; return; } /* now done by flag -object */
+        case 'q':
+            if(is("q")||is("quit"))  {
+                checkeol; if(verbosity)printf("miranda logout\n"); exit(0);
+            }
+        case 'r':
+            if(is("recheck")) {
+                checkeol; rechecking=2; rc_write(); return;
+            }
+        case 's':
+            if(is("s")||is("settings")) {
+                checkeol;
+                printf("*\theap %ld\n",SPACELIMIT);
+                printf("*\tdic %ld\n",DICSPACE);
+                printf("*\teditor = %s\n",editor);
+                printf("*\t%slist\n",listing?"":"no");
+                printf("*\t%srecheck\n",rechecking?"":"no");
+                if(!strictif)
+                    printf("\t-nostrictif (deprecated!)\n");
+                if(atcount)printf("\tcount\n");
+                if(atgc)printf("\tgc\n");
+                if(UTF8)printf("\tUTF-8 i/o\n");
+                if(!verbosity)printf("\thush\n");
+                if(debug)printf("\tdebug 0%o\n",debug);
+                printf("\n* items remembered between sessions\n");
+                return;
+            }
+        case 'v':
+            if(is("v")||is("version")) {
+                checkeol;
+                v_info(0);
+                return;
+            }
+        case 'V': if(is("V")){ checkeol;
+            v_info(1);
+            return;
+        }
+        default:
+            printf("\7unknown command \"%c%s\"\n",(int)c,dicp);
             printf("type /h for help\n");
             while((ch=getchar())!='\n'&&ch!=EOF);
             return;
-  } /* end of switch statement */
-  xschars();
+    } /* end of switch statement */
+    xschars();
 }
 
-void manaction()
-{ sprintf(linebuf,"\"%s/menudriver\" \"%s/manual\"",miralib,miralib);
-  system(linebuf);
+static void manaction(void)
+{
+    sprintf(linebuf,"\"%s/menudriver\" \"%s/manual\"",miralib,miralib);
+    system(linebuf);
 } /* put quotes around both pathnames to allow for spaces in miralib 8.5.06 */
 
-void editfile(t,line)
-char *t;
-int line;
-{ char *ebuf=linebuf;
-  char *p=ebuf,*q=editor;
-  int tdone=0;
-  if(line==0)line=1;  /* avoids warnings in some versions of vi */
-  while(*p++ = *q++)
-     if(p[-1]=='\\'&&(q[0]=='!'||q[0]=='%'))p[-1]= *q++; else
-     if(p[-1]=='!')
-       (void)
-       sprintf(p-1,"%d",line),
-       p+=strlen(p); else
-     if(p[-1]=='%')p[-1]='"',*p='\0',  /* quote filename 9.5.06 */
-		   (void)strncat(p,t,BUFSIZE+ebuf-p),
-		   p+=strlen(p),
-                   *p++ = '"',*p='\0',
-                   tdone=1;
-  if(!tdone)
-     p[-1] = ' ',
-     *p++ = '"',*p='\0',  /* quote filename 9.5.06 */
-     (void)strncat(p,t,BUFSIZE+ebuf-p),
-     p+=strlen(p),
-     *p++ = '"',*p='\0';
-  /* printf("%s\n",ebuf); /* DEBUG */
-  system(ebuf);
-  if(src_update())loadfile(current_script);
-  return;
+static void editfile(char *t, int line)
+{
+    char *ebuf=linebuf;
+    char *p=ebuf,*q=editor;
+    int tdone=0;
+    if(line==0)line=1;  /* avoids warnings in some versions of vi */
+    while(*p++ = *q++)
+        if(p[-1]=='\\'&&(q[0]=='!'||q[0]=='%'))p[-1]= *q++;
+        else if(p[-1]=='!')
+            (void) sprintf(p-1,"%d",line),
+            p+=strlen(p);
+        else if(p[-1]=='%') p[-1]='"',*p='\0',  /* quote filename 9.5.06 */
+            (void)strncat(p,t,BUFSIZE+ebuf-p),
+            p+=strlen(p),
+            *p++ = '"',*p='\0',
+            tdone=1;
+    if(!tdone)
+        p[-1] = ' ',
+        *p++ = '"',*p='\0',  /* quote filename 9.5.06 */
+        (void)strncat(p,t,BUFSIZE+ebuf-p),
+        p+=strlen(p),
+        *p++ = '"',*p='\0';
+    /* printf("%s\n",ebuf); /* DEBUG */
+    system(ebuf);
+    if (src_update()) loadfile(current_script);
+    return;
 }
 
-void xschars()
-{ word ch;
-  printf("\7extra characters at end of command\n");
-  while((ch=getchar())!='\n'&&ch!=EOF);
+static void xschars(void)
+{
+    word ch;
+    printf("\7extra characters at end of command\n");
+    while((ch=getchar())!='\n'&&ch!=EOF);
 }
 
-word reverse(x)  /* x is a cons list */
-word x;
-{ word y = NIL;
-  while(x!=NIL)y = cons(hd[x],y), x = tl[x];
-  return(y);
+word reverse(word x)  /* x is a cons list */
+{
+    word y = NIL;
+    while (x!=NIL) y = cons(hd[x],y), x = tl[x];
+    return(y);
 }
 
-word shunt(x,y)  /* equivalent to append(reverse(x),y) */
-word x,y;
-{ while(x!=NIL)y = cons(hd[x],y), x = tl[x];
-  return(y);
+word shunt(word x, word y)  /* equivalent to append(reverse(x),y) */
+{
+    while(x!=NIL) y = cons(hd[x],y), x = tl[x];
+    return(y);
 }
 
-char *presym[] = 
- {"abstype","div","if","mod","otherwise","readvals","show","type","where",
-  "with", 0};
-int presym_n[] =
- {      21,   8,   15,   8,          15,        31,    23,    22,     15,
-      21   };
+static char *presym[] =
+{"abstype","div","if","mod","otherwise","readvals","show","type","where",
+    "with", 0};
+static int presym_n[] =
+{      21,   8,   15,   8,          15,        31,    23,    22,     15,
+    21   };
 
 #include <ctype.h>
 
-void filequote(p) /* write p to stdout with <quotes> if appropriate */
-char *p; /* p is a pathname */
-{ static int mlen=0;
-  if(!mlen)mlen=(rindex(PRELUDE,'/')-PRELUDE)+1;
-  if(strncmp(p,PRELUDE,mlen)==0)
-    printf("<%s>",p+mlen);
-  else printf("\"%s\"",p);
+static void filequote(char *p) /* write p to stdout with <quotes> if appropriate */
+/* p is a pathname */
+{
+    static int mlen=0;
+    if(!mlen)mlen=(rindex(PRELUDE,'/')-PRELUDE)+1;
+    if(strncmp(p,PRELUDE,mlen)==0)
+        printf("<%s>",p+mlen);
+    else printf("\"%s\"",p);
 } /* PRELUDE is a convenient string with the miralib prefix */
 
-void finger(n) /* find info about name stored at dicp */
-char *n;
-{ word x; int line;
-  char *s;
-  x=findid(n);
-  if(x!=NIL&&id_type(x)!=undef_t)
-    { if(id_who(x)!=NIL)
-	s=(char *)hd[line=get_here(x)],line=tl[line];
-      if(!lastid)lastid=x;
-      report_type(x);
-      if(id_who(x)==NIL)printf(" ||primitive to Miranda\n");
-      else { char *aka=getaka(x);
-             if(aka==get_id(x))aka=NULL; /* don't report alias to self */
-             if(id_val(x)==UNDEF&&id_type(x)!=wrong_t)
-             printf(" ||(UNDEFINED) specified in "); else
-	     if(id_val(x)==FREE)
-             printf(" ||(FREE) specified in "); else
-             if(id_type(x)==type_t&&t_class(x)==free_t)
-             printf(" ||(free type) specified in "); else
-	     printf(" ||%sdefined in ",
-                    id_type(x)==type_t
-                     && t_class(x)==abstract_t?"(abstract type) ":
-                    id_type(x)==type_t
-                     && t_class(x)==algebraic_t?"(algebraic type) ":
-                    id_type(x)==type_t
-                     && t_class(x)==placeholder_t?"(placeholder type) ":
-                    id_type(x)==type_t
-                     && t_class(x)==synonym_t?"(synonym type) ":
-                    "");
-	     filequote(s);
-	     if(baded||rechecking)printf(" line %d",line);
-	     if(aka)printf(" (as \"%s\")\n",aka);
-	     else putchar('\n');
-           }
-      if(atobject)printf("%s = ",get_id(x)),
-                  out(stdout,id_val(x)),putchar('\n');
-      return; }
+static void finger(char *n) /* find info about name stored at dicp */
+{
+    word x; int line;
+    char *s;
+    x=findid(n);
+    if(x!=NIL&&id_type(x)!=undef_t) {
+        if(id_who(x)!=NIL)
+            s=(char *)hd[line=get_here(x)],line=tl[line];
+        if(!lastid)lastid=x;
+        report_type(x);
+        if (id_who(x)==NIL) printf(" ||primitive to Miranda\n");
+        else {
+            char *aka=getaka(x);
+            if (aka==get_id(x))aka=NULL; /* don't report alias to self */
+            if (id_val(x)==UNDEF&&id_type(x)!=wrong_t)
+                printf(" ||(UNDEFINED) specified in ");
+            else if(id_val(x)==FREE)
+                printf(" ||(FREE) specified in ");
+            else if (id_type(x)==type_t&&t_class(x)==free_t)
+                printf(" ||(free type) specified in ");
+            else
+                printf(" ||%sdefined in ",
+                       id_type(x)==type_t
+                       && t_class(x)==abstract_t?"(abstract type) ":
+                       id_type(x)==type_t
+                       && t_class(x)==algebraic_t?"(algebraic type) ":
+                       id_type(x)==type_t
+                       && t_class(x)==placeholder_t?"(placeholder type) ":
+                       id_type(x)==type_t
+                       && t_class(x)==synonym_t?"(synonym type) ":
+                       "");
+            filequote(s);
+            if(baded||rechecking)printf(" line %d",line);
+            if (aka) printf(" (as \"%s\")\n",aka);
+            else putchar('\n');
+        }
+        if(atobject)printf("%s = ",get_id(x)),
+            out(stdout,id_val(x)),putchar('\n');
+        return;
+    }
   diagnose(n);
 }
 
-void diagnose(n)
-char *n;
-{ int i=0;
-  if(isalpha(n[0]))
-    while(n[i]&&okid(n[i]))i++;
-  if(n[i]){ printf("\"%s\" -- not an identifier\n",n); return; }
-  for(i=0;presym[i];i++)
-     if(strcmp(n,presym[i])==0)
-       { printf("%s -- keyword (see manual, section %d)\n",n,presym_n[i]);
-	 return; }
-  printf("identifier \"%s\" not in scope\n",n);
+static void diagnose(char *n)
+{
+    int i=0;
+    if(isalpha(n[0]))
+        while(n[i]&&okid(n[i]))i++;
+    if(n[i]) {
+        printf("\"%s\" -- not an identifier\n",n); return;
+    }
+    for(i=0;presym[i];i++)
+    if(strcmp(n,presym[i])==0) {
+        printf("%s -- keyword (see manual, section %d)\n",n,presym_n[i]);
+        return;
+    }
+    printf("identifier \"%s\" not in scope\n",n);
 }
 
-int sorted=0; /* flag to avoid repeatedly sorting fil_defs */
-int leftist; /* flag to alternate bias of padding in justification */
-int words[colmax]; /* max plausible size of screen */
+static int sorted=0; /* flag to avoid repeatedly sorting fil_defs */
+static int leftist; /* flag to alternate bias of padding in justification */
+static int words[colmax]; /* max plausible size of screen */
 
-void allnamescom()
-{ word s;
-  word x=ND;
-  word y=x,z=0;
-  leftist=0;
-  namescom(make_fil(nostdenv?0:(word)STDENV,0,0,primenv));
-  if(files==NIL)return; else s=tl[files];
-  while(s!=NIL)namescom(hd[s]),s=tl[s];
-  namescom(hd[files]);
-  sorted=1;
-  /* now print warnings, if any */
-  /*if(ND!=NIL&&id_type(hd[ND])==type_t)
-    { printf("ILLEGAL EXPORT LIST - MISSING TYPENAME%s: ",tl[ND]==NIL?"":"S");
-      printlist("",ND);
-      return; } /* install if incomplete export list is escalated to error */
-  while(x!=NIL&&id_type(hd[x])==undef_t)x=tl[x];
-  while(y!=NIL&&id_type(hd[y])!=undef_t)y=tl[y];
-  if(x!=NIL)
-    { printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ");
-      for(;x!=NIL;x=tl[x])
-         if(id_type(hd[x])!=undef_t)
-	   { if(!z)z=1; else putchar(',');
-	     out(stdout,hd[x]); }
-      printf(";\n"); }
-  if(y!=NIL)
-    { printf("%s UNDEFINED NAMES: ",z?"AND":"WARNING, SCRIPT CONTAINS");
-      z=0;
-      for(;y!=NIL;y=tl[y])
-         if(id_type(hd[y])==undef_t)
-	   { if(!z)z=1; else putchar(',');
-	     out(stdout,hd[y]); }
-      printf(";\n"); }
+static void allnamescom(void)
+{
+    word s;
+    word x=ND;
+    word y=x,z=0;
+    leftist=0;
+    namescom(make_fil(nostdenv?0:(word)STDENV,0,0,primenv));
+    if(files==NIL)return; else s=tl[files];
+    while(s!=NIL)namescom(hd[s]),s=tl[s];
+    namescom(hd[files]);
+    sorted=1;
+    /* now print warnings, if any */
+    /*if(ND!=NIL&&id_type(hd[ND])==type_t)
+     { printf("ILLEGAL EXPORT LIST - MISSING TYPENAME%s: ",tl[ND]==NIL?"":"S");
+     printlist("",ND);
+     return; } /* install if incomplete export list is escalated to error */
+    while (x!=NIL&&id_type(hd[x])==undef_t) x=tl[x];
+    while (y!=NIL&&id_type(hd[y])!=undef_t) y=tl[y];
+    if(x!=NIL)  { printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ");
+        for(;x!=NIL;x=tl[x])
+        if(id_type(hd[x])!=undef_t) { if(!z)z=1; else putchar(',');
+            out(stdout,hd[x]);
+        }
+        printf(";\n");
+    }
+    if(y!=NIL) {
+        printf("%s UNDEFINED NAMES: ",z?"AND":"WARNING, SCRIPT CONTAINS");
+        z=0;
+        for(;y!=NIL;y=tl[y])
+        if(id_type(hd[y])==undef_t)
+        { if(!z)z=1; else putchar(',');
+            out(stdout,hd[y]);
+        }
+        printf(";\n");
+    }
 }
 /* There are two kinds of entry in ND
-   undefined names: val=UNDEF, type=undef_t
-   type errors: val=UNDEF, type=wrong_t
-*/
+ undefined names: val=UNDEF, type=undef_t
+ type errors: val=UNDEF, type=wrong_t
+ */
 
 #define tolerance  3
              /* max number of extra spaces we are willing to insert */
