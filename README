@@ -1,3 +1,15 @@
+# Miranda
+
+This is a clone of official miranda language
+
+Target is to use it for undestanding lazy functionnal language compilation
+and evaluation.
+
+*Miranda* being small is a good target for this
+
+
+# Original Readme
+
 This directory contains everything you should need to create  a  working
 version of the Miranda system.  Before compiling Miranda on a new host:
 	make cleanup
