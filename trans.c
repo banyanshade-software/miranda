@@ -619,70 +619,78 @@ static word fixrepeats(word qq)  /* expands multi-lhs generators in zf expressio
 } /* EFFICIENCY PROBLEM - rhs gets re-evaluated for each lhs, fix later */
 /* likewise re-typechecked, although this probably doesn't matter */
 
-word lastlink(x) /* finds last link of a list -- needed with zf body elision */
-word x;
-{ while(tl[x]!=NIL)x=tl[x];
-  return(x);
+word lastlink(word x) /* finds last link of a list -- needed with zf body elision */
+{
+    while (tl[x]!=NIL) x=tl[x];
+    return(x);
 }
 
 #define ischar(x) ((x)>=0&&(x)<=255)
 
-word genlhs(x) /* x is an expression found on the lhs of <- and genlhs returns
+word genlhs(word x) /* x is an expression found on the lhs of <- and genlhs returns
              the corresponding pattern */
-word x;
-{ word hold;
-  switch(tag[x])
-  { case AP:
-  	if(tag[hd[x]]==AP&&hd[hd[x]]==PLUS&&isnat(tl[x]))
-          return(ap2(PLUS,tl[x],genlhs(tl[hd[x]])));  /* n+k pattern */
-    case CONS:
-    case TCONS:
-    case PAIR:
-  	hold=genlhs(hd[x]); return(make(tag[x],hold,genlhs(tl[x])));
-    case ID:
-    	if(member(idsused,x))return(cons(CONST,x));
-    	if(!isconstructor(x))idsused=cons(x,idsused); return(x);
-    case INT: return(cons(CONST,x));
-    case DOUBLE: syntax("floating point literal in pattern\n");
-		 return(nill);
-    case ATOM: if(x==True||x==False||x==NILS||x==NIL||ischar(x))
-		 return(cons(CONST,x));
-    default: syntax("illegal form on left of <-\n");
-	     return(nill);
-}}
+{
+    word hold;
+    switch(tag[x]) {
+        case AP:
+            if(tag[hd[x]]==AP&&hd[hd[x]]==PLUS&&isnat(tl[x]))
+                return(ap2(PLUS,tl[x],genlhs(tl[hd[x]])));  /* n+k pattern */
+        case CONS:
+        case TCONS:
+        case PAIR:
+            hold=genlhs(hd[x]); return(make(tag[x],hold,genlhs(tl[x])));
+        case ID:
+            if(member(idsused,x))return(cons(CONST,x));
+            if(!isconstructor(x))idsused=cons(x,idsused); return(x);
+        case INT: return(cons(CONST,x));
+        case DOUBLE: syntax("floating point literal in pattern\n");
+            return(nill);
+        case ATOM: if(x==True||x==False||x==NILS||x==NIL||ischar(x))
+            return(cons(CONST,x));
+        default: syntax("illegal form on left of <-\n");
+            return(nill);
+    }
+}
 
 word speclocs=NIL; /* list of cons(id,hereinfo) giving location of spec for
 		     ids both defined and specified - needed to locate errs
 		     in meta_tcheck, abstr_mcheck */
-word getspecloc(x)
-word x;
-{ word s=speclocs;
-  while(s!=NIL&&hd[hd[s]]!=x)s=tl[s];
-  return(s==NIL?id_who(x):tl[hd[s]]); }
+            /* used in dta.c and steer.c */
+word getspecloc(word x)
+{
+    word s=speclocs;
+    while (s!=NIL&&hd[hd[s]]!=x) s=tl[s];
+    return(s==NIL?id_who(x):tl[hd[s]]);
+}
 
-void declare(x,e)    /* translates  <pattern> = <exp>  at top level  */
-word x,e;
-{ if(tag[x]==ID&&!isconstructor(x))decl1(x,e);else
-  { word bindings=scanpattern(x,x,share(tries(x,cons(e,NIL)),undef_t),
-			     ap(CONFERROR,cons(x,hd[e])));
-			     /* hd[e] is here-info */
-  /* note creation of share node to force sharing on code generation
-     and typechecking */
-    if(bindings==NIL){ errs=hd[e];
-		       syntax("illegal lhs for definition\n");
-		       return; }
-    lastname=0;
-    while(bindings!=NIL)
-	 { word h;
-	   if(id_val(h=hd[hd[bindings]])!=UNDEF)
-	     { errs=hd[e]; nameclash(h); return; }
-	   id_val(h)=tl[hd[bindings]];
-	   if(id_who(h)!=NIL)speclocs=cons(cons(h,id_who(h)),speclocs);
-	   id_who(h)=hd[e]; /* here-info */
-           if(id_type(h)==undef_t)addtoenv(h);
-	   bindings = tl[bindings];
-         }
-}}
+void declare(word x, word e)    /* translates  <pattern> = <exp>  at top level  */
+{
+    if (tag[x]==ID&&!isconstructor(x)) decl1(x,e);
+    else {
+        word bindings=scanpattern(x,x,share(tries(x,cons(e,NIL)),undef_t),
+                                  ap(CONFERROR,cons(x,hd[e])));
+        /* hd[e] is here-info */
+        /* note creation of share node to force sharing on code generation
+         and typechecking */
+        if(bindings==NIL){
+            errs=hd[e];
+            syntax("illegal lhs for definition\n");
+            return;
+        }
+        lastname=0;
+        while(bindings!=NIL)  {
+            word h;
+            if(id_val(h=hd[hd[bindings]])!=UNDEF) {
+                errs=hd[e]; nameclash(h); return;
+            }
+            id_val(h)=tl[hd[bindings]];
+            if (id_who(h)!=NIL) speclocs=cons(cons(h,id_who(h)),speclocs);
+            id_who(h)=hd[e]; /* here-info */
+            if (id_type(h)==undef_t) addtoenv(h);
+            bindings = tl[bindings];
+        }
+    }
+}
 
 word scanpattern(p,x,e,fail) /* declare ids in x as components of `p=e', each as
 		                n = ($p.n)e,  result is list of bindings */
