@@ -2400,34 +2400,35 @@ void out_here(FILE *f, word h, word nl)  /* h is fileinfo(scriptname,line_no) */
     if (compiling&&!errs) errs=h; /* relevant only when called from steer.c */
 } /* `soft' error, set errs rather than errline, so not saved in dump */
 
-void outstats()
-{ extern long claims,nogcs;
-  extern int atcount;
-  extern long long cellcount;
+void outstats(void)
+{
+    extern long claims,nogcs;
+    extern int atcount;
+    extern long long cellcount;
 #ifdef BSDCLOCK
-  struct tms buffer;
+    struct tms buffer;
 #endif
 #ifdef HISTO
-  printhisto();
+    printhisto();
 #endif
-  if(!atcount)return;
+    if(!atcount)return;
 #ifdef BSDCLOCK
-  times(&buffer);
+    times(&buffer);
 #else
-  end=clock();
+    end=clock();
 #endif
-  printf("||");
-  printf("reductions = %lld, cells claimed = %lld, ",
-		cycles,cellcount+claims);
-  printf("no of gc's = %ld, cpu = %0.2f",nogcs,
+    printf("||");
+    printf("reductions = %lld, cells claimed = %lld, ",
+           cycles,cellcount+claims);
+    printf("no of gc's = %ld, cpu = %0.2f",nogcs,
 #ifdef BSDCLOCK
-	    buffer.tms_utime/(CLK_TCK*1.0));
+           buffer.tms_utime/(CLK_TCK*1.0));
 #else
-            ((double) (end - start)) / CLOCKS_PER_SEC);
+    ((double) (end - start)) / CLOCKS_PER_SEC);
 #endif
-  putchar('\n');
+    putchar('\n');
 #ifdef DEBUG
-  printf("||maxr_depth=%d\n",maxrdepth);
+    printf("||maxr_depth=%d\n",maxrdepth);
 #endif
 }
 
