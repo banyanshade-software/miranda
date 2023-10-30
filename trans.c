@@ -168,33 +168,43 @@ word codegen(word x) /* returns expression x with abstractions performed */
     printf("codegen %lx\n", x);
     extern word commandmode,cook_stdin,common_stdin,common_stdinb,rv_expr;
     switch(tag[x]) {
-        case AP: if(commandmode /* beware of corrupting lastexp */
-                    &&x!=cook_stdin&&x!=common_stdin&&x!=common_stdinb) /* but share $+ $- */
-            return(make(AP,codegen(hd[x]),codegen(tl[x])));
+        case AP:
+            if(commandmode /* beware of corrupting lastexp */
+               && x!=cook_stdin&&x!=common_stdin&&x!=common_stdinb) /* but share $+ $- */
+                return(make(AP,codegen(hd[x]),codegen(tl[x])));
             if(tag[hd[x]]==AP&&hd[hd[x]]==APPEND&&tl[hd[x]]==NIL)
                 return(codegen(tl[x])); /* post typecheck reversal of HR bug fix */
             hd[x]=codegen(hd[x]); tl[x]=codegen(tl[x]);
             /* otherwise do in situ */
             return(tag[hd[x]]==AP&&hd[hd[x]]==G_ALT?leftfactor(x):x);
         case TCONS:
-        case PAIR: return(make(CONS,codegen(hd[x]),codegen(tl[x])));
-        case CONS: if(commandmode)
+        case PAIR:
             return(make(CONS,codegen(hd[x]),codegen(tl[x])));
+        case CONS:
+            if(commandmode)
+                return(make(CONS,codegen(hd[x]),codegen(tl[x])));
             /* otherwise do in situ (see declare) */
-            hd[x]=codegen(hd[x]); tl[x]=codegen(tl[x]);
+            hd[x]=codegen(hd[x]);
+            tl[x]=codegen(tl[x]);
             return(x);
-        case LAMBDA: return(abstract(hd[x],codegen(tl[x])));
-        case LET: return(translet(hd[x],tl[x]));
-        case LETREC: return(transletrec(hd[x],tl[x]));
-        case TRIES: return(transtries(hd[x],tl[x]));
-        case LABEL: return(codegen(tl[x]));
-        case SHOW: return(makeshow(hd[x],tl[x]));
+        case LAMBDA:
+            return(abstract(hd[x],codegen(tl[x])));
+        case LET:
+            return(translet(hd[x],tl[x]));
+        case LETREC:
+            return(transletrec(hd[x],tl[x]));
+        case TRIES:
+            return(transtries(hd[x],tl[x]));
+        case LABEL:
+            return(codegen(tl[x]));
+        case SHOW:
+            return(makeshow(hd[x],tl[x]));
         case LEXER: {
             word r=NIL,uses_state=0;;
             while(x!=NIL) {
                 word rule=abstr(mklexvar(0),codegen(tl[tl[hd[x]]]));
                 rule=abstr(mklexvar(1),rule);
-                if(!(tag[rule]==AP&&hd[rule]==K))uses_state=1;
+                if (!(tag[rule]==AP&&hd[rule]==K)) uses_state=1;
                 r=cons(cons(hd[hd[x]], /* start condition stuff */
                             cons(ap(hd[tl[hd[x]]],NIL),   /* matcher [] */
                                  rule)),
@@ -202,7 +212,7 @@ word codegen(word x) /* returns expression x with abstractions performed */
                 x=tl[x];
             }
             if(!uses_state) { /* strip off (K -) from each rule */
-                for(x=r;x!=NIL;x=tl[x]) tl[tl[hd[x]]]=tl[tl[tl[hd[x]]]];
+                for (x=r;x!=NIL;x=tl[x]) tl[tl[hd[x]]]=tl[tl[tl[hd[x]]]];
                 r = ap(LEX_RPT,ap(LEX_TRY,r));
             }
             else r = ap(LEX_RPT1,ap(LEX_TRY1,r));
@@ -221,12 +231,15 @@ word codegen(word x) /* returns expression x with abstractions performed */
                     id_val(current_id)=UNDEF;
                 if(hd[x])sayhere(hd[x],1);
             }
-            if(commandmode)rv_expr=1; else rv_script=1;
+            if (commandmode) rv_expr=1;
+            else rv_script=1;
             return(x);
-        case SHARE: if(tl[x]!= -1) /* arbitrary flag for already visited */
-            hd[x]=codegen(hd[x]),tl[x]= -1;
+        case SHARE:
+            if(tl[x]!= -1) /* arbitrary flag for already visited */
+                hd[x]=codegen(hd[x]),tl[x]= -1;
             return(hd[x]);
-        default: if(x==NILS)return(NIL);
+        default:
+            if(x==NILS) return(NIL);
             return(x); /* identifier, private name, or constant */
     }
 }
