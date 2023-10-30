@@ -8,7 +8,7 @@ MAN=usr/share/man/man1
 #BIN=usr/local/bin
 #LIB=usr/local/lib#beware no spaces after LIB
 #MAN=usr/local/man/man1
-CC = gcc -w
+CC = gcc -w -g
 CFLAGS = #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
@@ -21,7 +21,8 @@ mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o utf8.o y.tab.
 	$(CC) $(CFLAGS) -DVERS=`cat miralib/.version` -DVDATE="\"`./revdate`\"" \
 	    -DHOST="`./quotehostinfo`" version.c cmbnms.o y.tab.o data.o lex.o \
 	    big.o reduce.o steer.o trans.o types.o utf8.o -lm -o mira
-	strip mira$(EX)
+	#strip mira$(EX)
+
 y.tab.c y.tab.h: rules.y
 	$(YACC) -d rules.y
 big.o cmbns.o data.o lex.o reduce.o steer.o trans.o types.o y.tab.o: \
