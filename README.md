@@ -27,6 +27,15 @@ And indentation is quite strange, altogether it is not very readable.
 
 The **mira** program, when used in interactive mode, spawn a separate process for evaluation (thus allowing evaluation to crash without quiting the shell) while main process handles the compilation ; this make debug more difficult, but mira will not fork when using -exec option (assuming miranda program got a "main" function.
 
+### Memory
+
+Memory is organized in 3 separate arrays : tag (8bits), hd (word) and tail (word),
+corresponding to an actual structure of (tag,car,cdr) (thus tagged cons)
+
+This is used both for compilation (storing, more or less, the AST) and for execution
+(graph reduce, see reduce.c)
+
+
 ### Compilation 
 
 Compilation is performed in steer.c, entrypoint being codegen()
