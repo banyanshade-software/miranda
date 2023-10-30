@@ -165,6 +165,7 @@ word rv_script=0; /* flags readvals in use (for garbage collector) */
 
 word codegen(word x) /* returns expression x with abstractions performed */
 {
+    printf("codegen %lx\n", x);
     extern word commandmode,cook_stdin,common_stdin,common_stdinb,rv_expr;
     switch(tag[x]) {
         case AP: if(commandmode /* beware of corrupting lastexp */
@@ -175,38 +176,41 @@ word codegen(word x) /* returns expression x with abstractions performed */
             hd[x]=codegen(hd[x]); tl[x]=codegen(tl[x]);
             /* otherwise do in situ */
             return(tag[hd[x]]==AP&&hd[hd[x]]==G_ALT?leftfactor(x):x);
-    case TCONS:
-    case PAIR: return(make(CONS,codegen(hd[x]),codegen(tl[x])));
-    case CONS: if(commandmode)
-		 return(make(CONS,codegen(hd[x]),codegen(tl[x])));
-	       /* otherwise do in situ (see declare) */
-               hd[x]=codegen(hd[x]); tl[x]=codegen(tl[x]);
-	       return(x);
+        case TCONS:
+        case PAIR: return(make(CONS,codegen(hd[x]),codegen(tl[x])));
+        case CONS: if(commandmode)
+            return(make(CONS,codegen(hd[x]),codegen(tl[x])));
+            /* otherwise do in situ (see declare) */
+            hd[x]=codegen(hd[x]); tl[x]=codegen(tl[x]);
+            return(x);
         case LAMBDA: return(abstract(hd[x],codegen(tl[x])));
         case LET: return(translet(hd[x],tl[x]));
         case LETREC: return(transletrec(hd[x],tl[x]));
         case TRIES: return(transtries(hd[x],tl[x]));
         case LABEL: return(codegen(tl[x]));
         case SHOW: return(makeshow(hd[x],tl[x]));
-        case LEXER:
-        { word r=NIL,uses_state=0;;
-            while(x!=NIL)
-            { word rule=abstr(mklexvar(0),codegen(tl[tl[hd[x]]]));
+        case LEXER: {
+            word r=NIL,uses_state=0;;
+            while(x!=NIL) {
+                word rule=abstr(mklexvar(0),codegen(tl[tl[hd[x]]]));
                 rule=abstr(mklexvar(1),rule);
                 if(!(tag[rule]==AP&&hd[rule]==K))uses_state=1;
                 r=cons(cons(hd[hd[x]], /* start condition stuff */
                             cons(ap(hd[tl[hd[x]]],NIL),   /* matcher [] */
                                  rule)),
                        r);
-                x=tl[x]; }
-            if(!uses_state)  /* strip off (K -) from each rule */
-            { for(x=r;x!=NIL;x=tl[x])tl[tl[hd[x]]]=tl[tl[tl[hd[x]]]];
-                r = ap(LEX_RPT,ap(LEX_TRY,r)); }
+                x=tl[x];
+            }
+            if(!uses_state) { /* strip off (K -) from each rule */
+                for(x=r;x!=NIL;x=tl[x]) tl[tl[hd[x]]]=tl[tl[tl[hd[x]]]];
+                r = ap(LEX_RPT,ap(LEX_TRY,r));
+            }
             else r = ap(LEX_RPT1,ap(LEX_TRY1,r));
-            return(ap(r,0)); } /* 0 startcond */
+            return(ap(r,0));
+        } /* 0 startcond */
         case STARTREADVALS:
-            if(ispoly(tl[x]))
-            { extern word cook_stdin,ND;
+            if(ispoly(tl[x])) {
+                extern word cook_stdin,ND;
                 printf("type error - %s used at polymorphic type :: [",
                        cook_stdin&&x==hd[cook_stdin]?"$+":"readvals or $+");
                 out_type(redtvars(tl[x])),printf("]\n");
@@ -215,7 +219,8 @@ word codegen(word x) /* returns expression x with abstractions performed */
                     ND=add1(current_id,ND),
                     id_type(current_id)=wrong_t,
                     id_val(current_id)=UNDEF;
-                if(hd[x])sayhere(hd[x],1); }
+                if(hd[x])sayhere(hd[x],1);
+            }
             if(commandmode)rv_expr=1; else rv_script=1;
             return(x);
         case SHARE: if(tl[x]!= -1) /* arbitrary flag for already visited */
