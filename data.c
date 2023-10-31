@@ -137,6 +137,7 @@ word make(unsigned char t, word x, word y)  /* creates a new cell with "tag" t, 
           if (t>=INT) mark(y);
           return(make(t,x,y)); }
     }
+    extern int _forcegc;
   claims++;
   tag[listp]= t;
   hd[listp]= x;
@@ -158,6 +159,7 @@ void gc(void)       /*  the "garbage collector"  */
 {
     char *p1;
     extern word making;
+    if ((1)) printf("--- GC (%d) \n", collecting);
     collecting=1;
     p1= &(tag[ATOMLIMIT]);
     if(atgc)

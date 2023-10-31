@@ -16,11 +16,11 @@ EX = #.exe        #needed for CYGWIN, UWIN
 YACC = byacc #Berkeley yacc, gnu yacc not compatible
 # -Dsparc7 needed for Solaris 2.7
 # -Dsparc8 needed for Solaris 2.8 or later
-mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o utf8.o y.tab.o \
+mira: debug.o big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o utf8.o y.tab.o \
 			    version.c miralib/.version fdate .host Makefile
 	$(CC) $(CFLAGS) -DVERS=`cat miralib/.version` -DVDATE="\"`./revdate`\"" \
 	    -DHOST="`./quotehostinfo`" version.c cmbnms.o y.tab.o data.o lex.o \
-	    big.o reduce.o steer.o trans.o types.o utf8.o -lm -o mira
+	    debug.o big.o reduce.o steer.o trans.o types.o utf8.o -lm -o mira
 	#strip mira$(EX)
 
 y.tab.c y.tab.h: rules.y

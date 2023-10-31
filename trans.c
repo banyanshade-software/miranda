@@ -164,16 +164,15 @@ static word abstrlist(word x, word e)  /* abstraction of list of variables x fro
 word rv_script=0; /* flags readvals in use (for garbage collector) */
                   /* used in steer.c */
 
-static int dump_compile = 1;
 word codegen(word x)
 {
-    if (dump_compile) {
+    if (_dump_compile) {
         printf("++++ codegen %lx :\n", x);
         out(stdout,x);
         printf("\n---- compile\n");
     }
     word r = _codegen(x);
-    if (dump_compile) {
+    if (_dump_compile) {
         printf("---- compiled code:\n");
         out(stdout,r);
         printf("\n");

@@ -8,6 +8,9 @@
  * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
+
+#include "debug.h"
+
 typedef long word;
 /* word must be an integer type wide enough to also store (char*) or (FILE*).
    Defining it as "long" works on the most common platforms both 32 and

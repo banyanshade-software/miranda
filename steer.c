@@ -858,6 +858,15 @@ static void command(void)
 			return;
 		}
 	case 'd':
+        if (is("debug")) {
+			checkeol;
+            atcount=1;
+            _forcegc=1;
+            _dump_compile=1;
+            _dump_reduce=1;
+            debug = 3;
+            return;
+        }
 		if(is("dic")) {
 			extern char *dic;
 			if(!token()) { lose=getchar(); /* to eat \n */
@@ -939,6 +948,12 @@ static void command(void)
 		return;
 	}
 	case 'f':
+        if (is("forcegc")) {
+			checkeol;
+            atcount=1;
+            _forcegc=1;
+            return;
+        }
 		if(is("f")||is("file")) {
 			char *t=token();
 			checkeol;

@@ -360,16 +360,19 @@ static word rdepth=0;
 
 
 static word _reduce(word e);
-static int dump_reduce=1;
 static word reduce(word e)
 {
-    if (dump_reduce) {
+    if (_dump_reduce) {
         printf("reducing :\n");
         out(stdout, e);
         printf("\n");    
     }
+    extern int _forcegc;
+    if (_forcegc) {
+        gc();
+    }
     e = _reduce(e);
-    if (dump_reduce) {
+    if (_dump_reduce) {
         printf("reduced to :\n");
         out(stdout, e);
         printf("\n");    
