@@ -1,0 +1,17 @@
+static void apfile(word);
+static void closefile(word);
+static void div_error(void);
+static void fn_error(char *);
+static void getenv_error(char *);
+static word g_residue(word);
+static void lexfail(word);
+static word lexstate(word);
+static int memclass(int,word);
+static word numplus(word,word);
+static void outf(word);
+static word piperrmess(word);
+static void print(word);
+static word reduce(word);
+static void stdin_error(int);
+static void subs_error(void);
+static void int_error(char *);

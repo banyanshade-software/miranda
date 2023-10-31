@@ -52,6 +52,7 @@ static word translet(word,word);
 static word transletrec(word,word);
 static word transtries(word,word);
 static word transzf(word,word,word);
+static word _codegen(word x);
 
 static word abstract(word x, word e) /* abstraction of template x from compiled expression e */
 {
@@ -163,32 +164,38 @@ static word abstrlist(word x, word e)  /* abstraction of list of variables x fro
 word rv_script=0; /* flags readvals in use (for garbage collector) */
                   /* used in steer.c */
 
-word codegen(word x) /* returns expression x with abstractions performed */
+word codegen(word x)
 {
     printf("codegen %lx\n", x);
+    word r = _codegen(x);
+    return r;
+}
+
+static word _codegen(word x) /* returns expression x with abstractions performed */
+{
     extern word commandmode,cook_stdin,common_stdin,common_stdinb,rv_expr;
     switch(tag[x]) {
         case AP:
             if(commandmode /* beware of corrupting lastexp */
                && x!=cook_stdin&&x!=common_stdin&&x!=common_stdinb) /* but share $+ $- */
-                return(make(AP,codegen(hd[x]),codegen(tl[x])));
+                return(make(AP,_codegen(hd[x]),_codegen(tl[x])));
             if(tag[hd[x]]==AP&&hd[hd[x]]==APPEND&&tl[hd[x]]==NIL)
-                return(codegen(tl[x])); /* post typecheck reversal of HR bug fix */
-            hd[x]=codegen(hd[x]); tl[x]=codegen(tl[x]);
+                return(_codegen(tl[x])); /* post typecheck reversal of HR bug fix */
+            hd[x]=_codegen(hd[x]); tl[x]=_codegen(tl[x]);
             /* otherwise do in situ */
             return(tag[hd[x]]==AP&&hd[hd[x]]==G_ALT?leftfactor(x):x);
         case TCONS:
         case PAIR:
-            return(make(CONS,codegen(hd[x]),codegen(tl[x])));
+            return(make(CONS,_codegen(hd[x]),_codegen(tl[x])));
         case CONS:
             if(commandmode)
-                return(make(CONS,codegen(hd[x]),codegen(tl[x])));
+                return(make(CONS,_codegen(hd[x]),_codegen(tl[x])));
             /* otherwise do in situ (see declare) */
-            hd[x]=codegen(hd[x]);
-            tl[x]=codegen(tl[x]);
+            hd[x]=_codegen(hd[x]);
+            tl[x]=_codegen(tl[x]);
             return(x);
         case LAMBDA:
-            return(abstract(hd[x],codegen(tl[x])));
+            return(abstract(hd[x],_codegen(tl[x])));
         case LET:
             return(translet(hd[x],tl[x]));
         case LETREC:
@@ -196,13 +203,13 @@ word codegen(word x) /* returns expression x with abstractions performed */
         case TRIES:
             return(transtries(hd[x],tl[x]));
         case LABEL:
-            return(codegen(tl[x]));
+            return(_codegen(tl[x]));
         case SHOW:
             return(makeshow(hd[x],tl[x]));
         case LEXER: {
             word r=NIL,uses_state=0;;
             while(x!=NIL) {
-                word rule=abstr(mklexvar(0),codegen(tl[tl[hd[x]]]));
+                word rule=abstr(mklexvar(0),_codegen(tl[tl[hd[x]]]));
                 rule=abstr(mklexvar(1),rule);
                 if (!(tag[rule]==AP&&hd[rule]==K)) uses_state=1;
                 r=cons(cons(hd[hd[x]], /* start condition stuff */
@@ -236,7 +243,7 @@ word codegen(word x) /* returns expression x with abstractions performed */
             return(x);
         case SHARE:
             if(tl[x]!= -1) /* arbitrary flag for already visited */
-                hd[x]=codegen(hd[x]),tl[x]= -1;
+                hd[x]=_codegen(hd[x]),tl[x]= -1;
             return(hd[x]);
         default:
             if(x==NILS) return(NIL);
@@ -446,8 +453,8 @@ static word transtries(word id, word x) /* x is a list of alternative values, in
         r=ap(BADCASE,h=cons(oldn,0));
         /* 0 is placeholder for here-info */
         /* oldn omitted if id is pattern - FIX LATER */ }
-    else r=codegen(earliest=hd[x]), x = tl[x];
-    while(x!=NIL)r=ap2(TRY,codegen(earliest=hd[x]),r), x=tl[x];
+    else r=_codegen(earliest=hd[x]), x = tl[x];
+    while(x!=NIL)r=ap2(TRY,_codegen(earliest=hd[x]),r), x=tl[x];
     if (h) tl[h]=hd[earliest]; /* first line-no is the best marker */
     return(r);
 }
@@ -455,7 +462,7 @@ static word transtries(word id, word x) /* x is a list of alternative values, in
 static word translet(word d, word e) /* compile block with body e and def d */
 {
     word x=mklazy(d);
-    return (ap(abstract(dlhs(x),codegen(e)),codegen(dval(x))));
+    return (ap(abstract(dlhs(x),_codegen(e)),_codegen(dval(x))));
 }
 /* nasty bug, codegen(dval(x)) was interfering with abstract(dlhs(x)...
    to fix made codegen on tuples be NOT in situ 20/11/88  */
@@ -468,18 +475,18 @@ static word transletrec(word dd, word e) /* better method,  using list indexing 
         word x=hd[dd];
         if(tag[dlhs(x)]==ID)  /* couldn't be constructor, by grammar */
             lhs=cons(dlhs(x),lhs),
-            rhs=cons(codegen(dval(x)),rhs);
+            rhs=cons(_codegen(dval(x)),rhs);
         else { word i=0,ids,p=mkgvar(pn++); /* see note 1 */
             x=new_mklazy(x); ids=dlhs(x);
-            lhs=cons(p,lhs),rhs=cons(codegen(dval(x)),rhs);
+            lhs=cons(p,lhs),rhs=cons(_codegen(dval(x)),rhs);
             for(;ids!=NIL;ids=tl[ids],i++)
             lhs=cons(hd[ids],lhs),
             rhs=cons(ap2(SUBSCRIPT,mkindex(i),p),rhs);
         }
     }
     if(tl[lhs]==NIL) /* singleton */
-        return(ap(abstr(hd[lhs],codegen(e)),ap(Y,abstr(hd[lhs],hd[rhs]))));
-    return(ap(abstrlist(lhs,codegen(e)),ap(Y,abstrlist(lhs,rhs))));
+        return(ap(abstr(hd[lhs],_codegen(e)),ap(Y,abstr(hd[lhs],hd[rhs]))));
+    return(ap(abstrlist(lhs,_codegen(e)),ap(Y,abstrlist(lhs,rhs))));
 }
 
 
