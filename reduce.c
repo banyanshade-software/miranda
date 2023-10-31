@@ -180,6 +180,7 @@ FILE *s_out=NULL;  /* destination of current output message */
 /* order of declaration of constructors of these names in sys_message */
 
 /* ### */
+
 void output(word e)  /* "output" is called by YACC (see rules.y) to print the
 	      value of an expression - output then calls "reduce" - so the
               whole reduction process is driven by the need to print  */
@@ -187,7 +188,8 @@ void output(word e)  /* "output" is called by YACC (see rules.y) to print the
 {
 	extern word *cstack;
 	cstack = &e; /* don't follow C stack below this in gc */
-	L:e= reduce(e);
+L:
+    e = reduce(e);
 	while(tag[e]==CONS) {
 		word d;
 		hd[e]= reduce(hd[e]);
@@ -355,7 +357,27 @@ static word rdepth=0;
 
 /* reduce e to hnf, note that a function in hnf will have head h with
    S<=h<=ERROR all combinators lie in this range see combs.h */
+
+
+static word _reduce(word e);
+static int dump_reduce=1;
 static word reduce(word e)
+{
+    if (dump_reduce) {
+        printf("reducing :\n");
+        out(stdout, e);
+        printf("\n");    
+    }
+    e = _reduce(e);
+    if (dump_reduce) {
+        printf("reduced to :\n");
+        out(stdout, e);
+        printf("\n");    
+    }
+
+    return e;
+}
+static word _reduce(word e)
 {
 	word s=BACKSTOP,hold,arg1,arg2,arg3;
 #ifdef DEBUG
