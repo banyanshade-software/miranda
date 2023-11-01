@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h> /* creat() */
-/* #include <sys/wait.h> /* seems not needed, oct 05 */
+/* #include <sys/wait.h> */ /* seems not needed, oct 05 */
 struct stat buf; /* see man(2) stat - gets file status */
 
 #include "data.h"
@@ -156,17 +156,17 @@ int main(int argc, char *argv[])  /* system initialisation, followed by call to 
 	word manonly=0;
 	char *home, *prs;
 	int okhome_rc; /* flags valid HOME/.mirarc file present */
-	char *argv0=argv[0];
+	//char *argv0=argv[0];
 	char *initscript;
 	int badlib=0;
 	extern int ARGC; extern char **ARGV;
 	extern word newtyps,algshfns;
-	char *progname=rindex(argv[0],'/');
+	//char *progname=rindex(argv[0],'/');
 	cstack= &manonly;
 	/* used to indicate the base of the C stack for garbage collection purposes */
 	verbosity=isatty(0);
 	/*if(isatty(1))*/ setbuf(stdout,NULL); /* for unbuffered tty output */
-	if (home=getenv("HOME")) {
+	if ((home=getenv("HOME"))) {
 		strcpy(home_rc,home);
 		if (strcmp(home_rc,"/")==0) home_rc[0]=0; /* root is special case */
 		strcat(home_rc,"/.mirarc");
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])  /* system initialisation, followed by call to 
 			char *logfilname, *p=strrchr(argv[2],'/');
 			FILE *fil=NULL;
 			if(!p)p=argv[2]; /* p now holds last component of prog name */
-			if(logfilname=malloc((strlen(p)+9)))
+			if ((logfilname=malloc((strlen(p)+9))))
 				sprintf(logfilname,"miralog/%s",p),
 				fil=fopen(logfilname,"a");
 			else mallocfail("logfile name");
@@ -271,7 +271,7 @@ int main(int argc, char *argv[])  /* system initialisation, followed by call to 
 		if(editor==NULL)editor=EDITOR;
 		else strcpy(ebuf,editor),editor=ebuf,fixeditor();
 	}
-	if(prs=getenv("MIRAPROMPT"))promptstr=prs;
+	if ((prs=getenv("MIRAPROMPT"))) promptstr=prs;
 	if(getenv("RECHECKMIRA")&&!rechecking)rechecking=1;
 	if(getenv("NOSTRICTIF"))strictif=0;
 	setupdic(); /* used by mkabsolute */
@@ -461,7 +461,7 @@ static void announce(void)
 {
 	extern char *vdate;
 	word w,j;
-	/*clrscr();  /* clear screen on start up */
+	/*clrscr(); */  /* clear screen on start up */
 	w=(twidth()-50)/2;
 	printf("\n\n");
 	spaces(w); printf("   T h e   M i r a n d a   S y s t e m\n\n");
@@ -669,7 +669,7 @@ static void commandloop(char *initscript)
 				shell=getenv("SHELL");
 				if(!shell)shell="/bin/sh"; }
 			oldsig= signal(SIGINT,SIG_IGN);
-			if(pid=fork()) { /* parent */
+			if((pid=fork())) { /* parent */
 				if(pid==-1)
 					perror("UNIX error - cannot create process");
 				while(pid!=wait(0));
@@ -792,15 +792,15 @@ void reset(void) /* interrupt catcher - see call to signal in commandloop */
 {
 	extern word lineptr,ATNAMES,current_id;
 	extern int blankerr,collecting;
-	/*if(!making)  /* see note below
-     (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
+	/*if(!making) */  /* see note below
+     (void)signal(SIGINT,SIG_IGN); */ /* dont interrupt me while I'm tidying up */
 	/*if(magic)exit(0); *//* signal now not set to reset in magic scripts */
 	if(collecting)gcpatch();
 	if(loading) {
 		if(!blankerr)
 			printf("\n<<compilation interrupted>>\n");
 		if(unlinkme)unlink(unlinkme);
-		/* stackp=dstack; /* add if undump() made interruptible later*/
+		/* stackp=dstack; */ /* add if undump() made interruptible later*/
 		oldfiles=files,unload(),current_id=ATNAMES=loading=SYNERR=lineptr=0;
 		if(blankerr)blankerr=0,makedump();
 	}
@@ -890,7 +890,7 @@ static void command(void)
 		}
 	case 'e': if(is("e")||is("edit")) {
 		char *mf=0;
-		if(t=token())t=addextn(1,t);
+		if ((t=token())) t=addextn(1,t);
 		else t=current_script;
 		checkeol;
 		if(stat(t,&buf)) { /* new file */
@@ -912,7 +912,7 @@ static void command(void)
 				dicq=dicp=dicp+strlen(dicp)+1;
 			}
 			if(!mf&&!stat(mirahdr,&buf)) mf=mirahdr;
-			/*if(mf)printf("mf=%s\n",mf); /* DEBUG*/
+			/*if(mf)printf("mf=%s\n",mf); */ /* DEBUG*/
 			if (mf&&t!=current_script) {
 				printf("open new script \"%s\"? [ny]",t);
 				ch1=ch=getchar();
@@ -930,7 +930,7 @@ static void command(void)
 	if (is("editor")) {
 		char *hold=linebuf,*h;
 		if(!getln(stdin,pnlim-1,hold))break; /*reject if too long*/
-		if(!*hold)  { /* lose=getchar(); /* to eat newline */
+		if(!*hold)  { /* lose=getchar(); */ /* to eat newline */
 			printf("%s\n",editor);
 			return;
 		}
@@ -1071,7 +1071,7 @@ static void command(void)
              while(x)
              putchar(' '),out(stdout,hd[x]),x=tl[x];
              putchar('\n'); }
-             return; }              /* DEBUG */
+             return; } */             /* DEBUG */
 		if(is("nocount")) {
 			checkeol; atcount=0; return;
 		}
@@ -1088,7 +1088,7 @@ static void command(void)
 			checkeol; rechecking=0; rc_write(); return;
 		}
 		/* case 'o': if(is("object"))
-             { checkeol; atobject=1; return; } /* now done by flag -object */
+             { checkeol; atobject=1; return; } */ /* now done by flag -object */
 	case 'q':
 		if(is("q")||is("quit"))  {
 			checkeol; if(verbosity)printf("miranda logout\n"); exit(0);
@@ -1162,7 +1162,7 @@ static void editfile(char *t, int line)
 		(void)strncat(p,t,BUFSIZE+ebuf-p),
 		p+=strlen(p),
 		*p++ = '"',*p='\0';
-	/* printf("%s\n",ebuf); /* DEBUG */
+	/* printf("%s\n",ebuf); */ /* DEBUG */
 	system(ebuf);
 	if (src_update()) loadfile(current_script);
 	return;
@@ -1285,7 +1285,7 @@ static void allnamescom(void)
 	/*if(ND!=NIL&&id_type(hd[ND])==type_t)
      { printf("ILLEGAL EXPORT LIST - MISSING TYPENAME%s: ",tl[ND]==NIL?"":"S");
      printlist("",ND);
-     return; } /* install if incomplete export list is escalated to error */
+     return; } */ /* install if incomplete export list is escalated to error */
 	while (x!=NIL&&id_type(hd[x])==undef_t) x=tl[x];
 	while (y!=NIL&&id_type(hd[y])!=undef_t) y=tl[y];
 	if(x!=NIL)  {
@@ -1329,7 +1329,7 @@ static void namescom(word l)  /* l is an element of `files' */
 		if(id_type(hd[n])==wrong_t||id_val(hd[n])!=UNDEF) {
 			word w=strlen(get_id(hd[n]));
 			if(col+w<scrwd)col += (col!=0);
-			else if(wp&&col+w>=scrwd)  { word i,r,j;
+            else if(wp&&col+w>=scrwd)  { word i=0,r=0,j=0;
 			if(wp>1)i=(scrwd-col)/(wp-1),r=(scrwd-col)%(wp-1);
 			if(i+(r>0)>tolerance)i=r=0;
 			if(leftist)
@@ -1408,7 +1408,7 @@ void loadfile(char *t)
      while(getc(s_in)!='\n');
      commandmode=1;
      c=MAGIC; }
-     else  /* change to magic scripts 19.11.2013 */
+     else  */  /* change to magic scripts 19.11.2013 */
 	commandmode = 0;
 	if(verbosity||making)printf("compiling %s\n",t);
 	nextpn=0; /* lose pnames */
@@ -1445,7 +1445,7 @@ void loadfile(char *t)
 		if(verbosity||making&&!mkexports&&!mksources)
 			printf("checking types in %s\n",t);
 		checktypes();
-	/* printf("typecheck complete\n"); /* DEBUG */ }
+	/* printf("typecheck complete\n"); */ /* DEBUG */ }
 	if(!SYNERR&&exports!=NIL)
 		if(ND!=NIL)exports=NIL;
 		else { /* skip check, cannot be %included */
@@ -1500,17 +1500,17 @@ void loadfile(char *t)
 					r=UNION(r,deps(t_info(hd[hd[e1]])));
 				else e=cons(hd[hd[e1]],e);
 			else r=UNION(r,deps(t));
-		/*printlist("r: ",r); /* DEBUG */
+		/*printlist("r: ",r); */ /* DEBUG */
 		for(;r!=NIL;r=tl[r])
 			if(!member(e,hd[r]))bereaved=cons(hd[r],bereaved);
-		/*printlist("bereaved: ",bereaved); /* DEBUG */
+		/*printlist("bereaved: ",bereaved); */ /* DEBUG */
 	}
 	if(exports!=NIL&&bereaved!=NIL)  {
 		extern word newtyps;
 		word b=intersection(bereaved,newtyps);
-		/*printlist("newtyps",newtyps); /* DEBUG */
+		/*printlist("newtyps",newtyps); */ /* DEBUG */
 		if(b!=NIL)
-			/*ND=b; /* to escalate to type error, see also allnamescom */
+			/*ND=b; */ /* to escalate to type error, see also allnamescom */
 			printf("warning, export list is incomplete - missing typename%s: ",
 					tl[b]==NIL?"":"s"),
 					printlist("",b);
@@ -1598,7 +1598,7 @@ static void fixexports(void)
 {
 	extern word exports,exportfiles,embargoes,freeids;
 	word e=exports,f;
-	/* printlist("exports: ",e); /* DEBUG */
+	/* printlist("exports: ",e); */ /* DEBUG */
 	for(;e!=NIL;e=tl[e])paint(hd[e]);
 	internals=NIL;
 	if(exports==NIL&&exportfiles==NIL&&embargoes==NIL) { /*no %export in script*/
@@ -1616,13 +1616,13 @@ static void fixexports(void)
 				internals=cons(privatise(hd[e]),internals);
 		}
 	/* optimisation, need not do this to `silent' components - fix later */
-	/*printlist("internals: ",internals); /* DEBUG */
+	/*printlist("internals: ",internals); */ /* DEBUG */
 	for(e=exports;e!=NIL;e=tl[e])unpaint(hd[e]);
 } /* may not be interrupt safe, re unload() */
 
 void unfixexports(void)
 {
-	/*printlist("internals: ",internals); /* DEBUG */
+	/*printlist("internals: ",internals); */ /* DEBUG */
 	word i=internals;
 	if(mkexports)return; /* in this case don't want internals restored */
 	while(i!=NIL) /* lose */
@@ -1669,7 +1669,7 @@ static int sigflag=0;
 
 static void sigdefer(void)
 {
-	/* printf("sigdefer()\n"); /* DEBUG */
+	/* printf("sigdefer()\n"); */ /* DEBUG */
 	sigflag=1;
 } /* delayed signal handler, installed during load_script() */
 
@@ -1678,7 +1678,7 @@ static word mkincludes(word includees)
 	extern word FBS,BAD_DUMP,CLASHES,exportfiles,exports,TORPHANS;
 	word pid,result=NIL,tclashes=NIL;
 	includees=reverse(includees); /* process in order of occurrence in script */
-	if(pid=fork()) { /* parent */
+	if((pid=fork())) { /* parent */
 		int status;
 		if(pid==-1) { perror("UNIX error - cannot create process"); /* will say why */
 		if(ideep>6) /* perhaps cyclic %include */
@@ -1723,7 +1723,7 @@ static word mkincludes(word includees)
 		(void)strcpy(dicp+strlen(dicp)-1,obsuffix);
 		if(!making) /* cannot interrupt load_script() */
 			oldsig=signal(SIGINT,(sighandler)sigdefer);
-		if(f=fopen(dicp,"r"))
+		if ((f=fopen(dicp,"r")))
 			x=load_script(f,fn,hd[tl[hd[includees]]],tl[tl[hd[includees]]],0),
 			fclose(f);
 		ld_stuff=cons(x,ld_stuff);
@@ -1741,7 +1741,7 @@ static word mkincludes(word includees)
              copy of a (non-synonym) type in the same scope, even under
              different names. */
 			word y,z;
-			/* printf("start share analysis\n");  /* DEBUG */
+			/* printf("start share analysis\n"); */  /* DEBUG */
 			if(TORPHANS)rfl=shunt(x,rfl); /* file has type orphans */
 			for(y=x;y!=NIL;y=tl[y])fil_inodev(hd[y])=inodev(get_fil(hd[y]));
 			for(y=x;y!=NIL;y=tl[y])
@@ -1770,7 +1770,7 @@ static word mkincludes(word includees)
 							/*following test redundant - remove when sure is ok*/
 							if(p!=NIL||q!=NIL)
 								fprintf(stderr,"impossible event in mkincludes\n");
-							/*break; /* z loop -- NO! (see liftbug) */
+							/*break; */ /* z loop -- NO! (see liftbug) */
 						}
 			if(member(exportfiles,(word)fn)) { /* move ids of x onto exports */
 				for(y=x;y!=NIL;y=tl[y])
@@ -1783,7 +1783,7 @@ static word mkincludes(word includees)
 			/* keep `result' in front-first order */
 			if(hd[FBS]==NIL)FBS=tl[FBS];
 			else hd[FBS]=cons(tl[hd[hd[includees]]],hd[FBS]); /* hereinfo */
-			/* printf("share analysis finished\n");  /* DEBUG */
+			/* printf("share analysis finished\n"); */  /* DEBUG */
 			continue;
 		}
 		/* something wrong - find out what */
@@ -1893,7 +1893,7 @@ void readoption(void) /* readopt type orphans */
 			tl[tlost]==NIL?" is needed but has":"s are needed but have");
 	/* structure of tlost is list of cons(losttype,list-of-ids) */
 	for(;tlost!=NIL;tlost=tl[tlost])  { /* printf("tinfo_tlost=");out(stdout,t_info(hd[hd[tlost]]));
-                                         putchar(';'); /*DEBUG */
+                                         putchar(';'); */ /*DEBUG */
 		printf("\'%s\' of file \"%s\", needed by: ",
 				(char *)hd[hd[t_info(hd[hd[tlost]])]],
 				(char *)hd[tl[t_info(hd[hd[tlost]])]]);
@@ -1924,6 +1924,7 @@ word fixtype(word t, word x)  /* substitute out any indirected typenames in t */
 	}
 }
 
+#if 0
 #define mask(c) (c&0xDF)
 /* masks out lower case bit, which is 0x20  */
 static word alfa_ls(char *a, char *b)  /* 'DICTIONARY ORDER' - not currently used */
@@ -1932,6 +1933,7 @@ static word alfa_ls(char *a, char *b)  /* 'DICTIONARY ORDER' - not currently use
 	if(mask(*a)==mask(*b))return(strcmp(a,b)<0); /* lower case before upper */
 	return(mask(*a)<mask(*b));
 }
+#endif
 
 word alfasort(word x) /* also removes non_IDs from result */
 {
@@ -1975,7 +1977,7 @@ static void unload(void)  /* clear out current script in preparation for reloadi
 	unsetids(newtyps);
 	newtyps=NIL;
 	unsetids(freeids);
-	freeids=includees=SGC=freeids=TABSTRS=ND=NIL;
+	freeids=includees=SGC=TABSTRS=ND=NIL;
 	unsetids(internals);
 	internals=NIL;
 	while(files!=NIL) {
@@ -2080,7 +2082,7 @@ word process(void)
 	sighandler oldsig;
 	oldsig = signal(SIGINT,SIG_IGN);
 	/* do not let parent receive interrupts intended for child */
-	if(pid=fork())  { /* parent */
+	if((pid=fork()))  { /* parent */
 		int status; /* see man 2 exit, wait, signal */
 		if(pid== -1) { perror("UNIX error - cannot create process");
 		return(0);
@@ -2235,9 +2237,9 @@ static void makedump(void)
 		if (making&&!make_status)make_status=1;
 		return;
 	}
-	/* printf("dumping to %s\n",obf); /* DEBUG */
+	/* printf("dumping to %s\n",obf); */ /* DEBUG */
 	unlinkme=obf;
-	/* fchmod(fileno(f),0666); /* to make dumps writeable by all */ /* no! */
+	/* fchmod(fileno(f),0666); */ /* to make dumps writeable by all */ /* no! */
 	setprefix(current_script);
 	dump_script(files,f);
 	unlinkme=NULL;
@@ -2271,7 +2273,7 @@ static void undump(char *t) /* restore t from dump, or recompile if necessary */
 	loading=1;
 	oldfiles=NIL;
 	unload();
-	/*if(!initialising)printf("undumping from %s\n",obf); /* DEBUG */
+	/*if(!initialising)printf("undumping from %s\n",obf);*/ /* DEBUG */
 	if(!initialising&&!making) /* ie this is the main script */
 		sigflag=0,
 		oldsig=signal(SIGINT,(sighandler)sigdefer);
@@ -2289,7 +2291,7 @@ static void undump(char *t) /* restore t from dump, or recompile if necessary */
 	if(!initialising&&!making) /* restore interrupt handler */
 		(void)signal(SIGINT,oldsig);
 	if(sigflag)sigflag=0,(*oldsig)(); /* take deferred interrupt */
-	/*if(!initialising)printf("%s undumped\n",obf); /* DEBUG */
+	/*if(!initialising)printf("%s undumped\n",obf); */ /* DEBUG */
 	if(CLASHES!=NIL)  {
 		if(ideep==0)printf("cannot load %s ",obf),
 				printlist("due to name clashes: ",alfasort(CLASHES));
