@@ -186,6 +186,13 @@ int main(int argc, char *argv[])  /* system initialisation, followed by call to 
 		else if(strcmp(argv[1],"-nostrictif")==0)strictif=0;
 		else if(strcmp(argv[1],"-gc")==0)atgc=1;
 		else if(strcmp(argv[1],"-object")==0)atobject=1;
+		else if(strcmp(argv[1],"-debug")==0) {
+            atcount=1;
+            _forcegc=1;
+            _dump_compile=1;
+            _dump_reduce=1;
+            debug = 3;
+        }
 		else if(strcmp(argv[1],"-lib")==0) {
 			argc--,argv++;
 			if(argc==1)missparam("lib"); else miralib=argv[1];

@@ -188,10 +188,10 @@ void output(word e)  /* "output" is called by YACC (see rules.y) to print the
 {
 	extern word *cstack;
 	cstack = &e; /* don't follow C stack below this in gc */
-L:
+//L:
     e = reduce(e);
 	while(tag[e]==CONS) {
-		word d;
+		//word d;
 		hd[e]= reduce(hd[e]);
 		switch(constr_tag(head(hd[e]))) {
 		case Stdout: print(tl[hd[e]]);
@@ -270,7 +270,7 @@ static void outf(word e)   /*  e is of the form (Tofile f x)  */
 			fprintf(stderr,"\nTofile: cannot write to \"%s\"\n",f);
 			s_out=stdout;
 			return;
-			/* outstats(); exit(1); /* release one policy */
+			/* outstats(); exit(1); */ /* release one policy */
 		}
 		if (isatty(fileno(s_out))) setbuf(s_out,NULL); /*for unbuffered tty output*/
 		outfilq= cons(datapair(keep(f),s_out),outfilq);
@@ -337,7 +337,7 @@ word waiting=NIL;
 #define getarg(a) upleft; a=tl[e]
 #define UPRIGHT mknormal(s), hold=tl[s], tl[s]=e, e=hd[s], hd[s]=hold
 #define lastarg tl[e]
-static word reds=0;
+// static word reds=0;
 
 /* IMPORTANT WARNING - the macro's
      `downright;' `upleft;' `getarg;' 
@@ -404,8 +404,8 @@ static word _reduce(word e)
 	}
 #endif
 
-	OPDECODE:
-	/*lasthead=e; /* DEBUG */
+//OPDECODE:
+	/*lasthead=e; */ /* DEBUG */
 	cycles++;
 	switch(e)  {
 	case S:        /*  S f g x => f x(g x)  */
@@ -741,28 +741,32 @@ static word _reduce(word e)
 		arg1=tl[hd[e]]=reduce(tl[hd[e]]);  /* ### */
 		lastarg=reduce(lastarg);  /* ### */
 		if(lastarg==NIL)subs_error();
-		{ long long indx;
-		if(tag[arg1]==ATOM)indx=arg1;/* small indexes represented directly */
-		else if(tag[arg1]==INT)indx=get_int(arg1);
-		else int_error("!");
-		/* problem, indx may be followed by gc
+		{
+			long long indx = -1;
+			if(tag[arg1]==ATOM )indx=arg1;/* small indexes represented directly */
+			else if (tag[arg1]==INT) indx=get_int(arg1);
+			else int_error("!");
+			/* problem, indx may be followed by gc
              - cannot make static, because of ### below */
-		if(indx<0)subs_error();
-		while(indx)
-		{ lastarg= tl[lastarg]= reduce(tl[lastarg]);   /* ### */
-		if(lastarg==NIL)subs_error();
-		indx--; }
-		hd[e]= I;
-		e=tl[e]=hd[lastarg];  /* could be eager in tl[e] */
-		goto NEXTREDEX; }
+			if(indx<0) subs_error();
+			while(indx) {
+				lastarg= tl[lastarg]= reduce(tl[lastarg]);   /* ### */
+				if(lastarg==NIL)subs_error();
+				indx--;
+			}
+			hd[e]= I;
+			e=tl[e]=hd[lastarg];  /* could be eager in tl[e] */
+			goto NEXTREDEX;
+		}
 
 	case FOLDL1:      /* FOLDL1 op (a:x) => FOLDL op a x */
 		getarg(arg1);
 		upleft;
-		if((lastarg=reduce(lastarg))!=NIL)   /* ### */
-		{ hd[e]=ap2(FOLDL,arg1,hd[lastarg]);
-		tl[e]=tl[lastarg];
-		goto NEXTREDEX; }
+		if((lastarg=reduce(lastarg))!=NIL)  { /* ### */
+			hd[e]=ap2(FOLDL,arg1,hd[lastarg]);
+			tl[e]=tl[lastarg];
+			goto NEXTREDEX;
+		}
 		else fn_error("foldl1 applied to []");
 
 	case FOLDL:       /* FOLDL op r [] => r
@@ -816,17 +820,21 @@ static word _reduce(word e)
                            does UTF-8 conversion where appropriate     */
 		UPLEFT;           /* gc insecurity - arg is not a heap object */
 		if(lastarg==0) /* special case created by $- */
-		{ if(stdinuse==':')stdin_error('-');
-		if(stdinuse)
-		{ hd[e]=I; e=tl[e]=NIL; goto DONE; }
-		stdinuse='-';
-		tl[e]=(word)stdin; }
+		{
+			if(stdinuse==':')stdin_error('-');
+			if(stdinuse) {
+				hd[e]=I; e=tl[e]=NIL; goto DONE;
+			}
+			stdinuse='-';
+			tl[e]=(word)stdin;
+		}
 		hold=UTF8?sto_char(fromUTF8((FILE *)lastarg)):getc((FILE *)lastarg);
-		if(hold==EOF)
-		{   fclose((FILE *)lastarg);
-		hd[e]=I;
-		e=tl[e]= NIL;
-		goto DONE; }
+		if(hold==EOF) {
+			fclose((FILE *)lastarg);
+			hd[e]=I;
+			e=tl[e]= NIL;
+			goto DONE;
+		}
 		setcell(CONS,hold,ap(READ,lastarg));
 		goto DONE;
 
@@ -860,7 +868,7 @@ static word _reduce(word e)
              { int i=2;
              fprintf(stderr,"arg%s = ",nargs>2?"s":"");
              while(i<=nargs)out(stderr,tl[stackp[-(i++)]]),putc(' ',stderr);
-             putc('\n',stderr); } /* fix later */
+             putc('\n',stderr); }*/ /* fix later */
 		}
 		outstats();
 		exit(1);
@@ -2454,7 +2462,7 @@ void outstats(void)
 {
 	extern long claims,nogcs;
 	extern int atcount;
-	extern long long cellcount;
+	//extern long long cellcount; now in debug.h
 #ifdef BSDCLOCK
 	struct tms buffer;
 #endif
@@ -2468,8 +2476,8 @@ void outstats(void)
 	end=clock();
 #endif
 	printf("||");
-	printf("reductions = %lld, cells claimed = %lld, ",
-			cycles,cellcount+claims);
+	printf("reductions = %lld, cells claimed = %lld, max = %lld, ",
+			cycles,cellcount+claims, maxcellcount);
 	printf("no of gc's = %ld, cpu = %0.2f",nogcs,
 #ifdef BSDCLOCK
 			buffer.tms_utime/(CLK_TCK*1.0));

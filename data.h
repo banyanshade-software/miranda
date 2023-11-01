@@ -10,6 +10,8 @@
 
 
 #include "debug.h"
+#include <stdint.h>
+
 
 typedef long word;
 /* word must be an integer type wide enough to also store (char*) or (FILE*).

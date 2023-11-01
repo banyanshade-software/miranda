@@ -31,6 +31,7 @@ static word *hdspace;
 static word *tlspace;
 
 long long cellcount=0;  // used by reduce.c
+long long maxcellcount=0;  // used by reduce.c
 long claims=0;          // used by reduce.c
 long nogcs=0;           // used by reduce.c
 extern int atgc,loading; /* flags, set in steer.c */
@@ -159,7 +160,9 @@ void gc(void)       /*  the "garbage collector"  */
 {
     char *p1;
     extern word making;
-    if ((1)) printf("--- GC (%d) \n", collecting);
+    if ((1)) {
+        printf("--- GC (%d) \n", collecting);
+    }
     collecting=1;
     p1= &(tag[ATOMLIMIT]);
     if(atgc)
@@ -185,8 +188,12 @@ void gc(void)       /*  the "garbage collector"  */
     /*if(atgc)printf("bases() done\n"); /* DEBUG */
     listp= ATOMLIMIT - 1;
     cellcount+= claims;
+    if (cellcount>maxcellcount) maxcellcount=cellcount;
     claims= 0;
     collecting=0;
+    if ((1)) {
+        outstats();
+    }
 }
 /* int Icount; /* DEBUG */
 

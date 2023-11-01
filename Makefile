@@ -8,7 +8,8 @@ MAN=usr/share/man/man1
 #BIN=usr/local/bin
 #LIB=usr/local/lib#beware no spaces after LIB
 #MAN=usr/local/man/man1
-CC = gcc -w -g
+#CC = gcc -w -g -Wall
+CC = gcc -g -Wall
 CFLAGS = #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
