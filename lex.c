@@ -61,8 +61,8 @@ void setupdic()
 }
 
 /* this allows ~login convention in filenames */
-/* #define okgetpwnam
-/* suppress 26.5.06 getpwnam causes runtime error when statically linked (Linux) */
+/* #define okgetpwnam 
+* suppress 26.5.06 getpwnam causes runtime error when statically linked (Linux) */
 
 #ifdef okgetpwnam
 #include <pwd.h>
@@ -72,7 +72,7 @@ char *getenv();
 
 char *gethome(n) /* for expanding leading `~' in tokens and pathnames */
 char *n;
-{ struct passwd *pw;
+{ //struct passwd *pw;
   if(n[0]=='\0')return(getenv("HOME"));
 #ifdef okgetpwnam
   if(pw=getpwnam(n))return(pw->pw_dir); 
@@ -99,8 +99,8 @@ char *token() /* lex analyser for command language (very simple) */
 	   /* NB csh does not allow `.' in user ids when expanding `~'
 	      but this may be a mistake */
       *dicq='\0';
-      if(h=gethome(dicp+1))
-      (void)strcpy(dicp,h),dicq=dicp+strlen(dicp);
+      if((h=gethome(dicp+1)))
+        (void)strcpy(dicp,h),dicq=dicp+strlen(dicp);
     }
 #ifdef SPACEINFILENAMES
   if(ch!='"'&&ch!='<')        /* test added 9.5.06 see else part */
@@ -516,7 +516,7 @@ word yylex()         /* called by YACC to get the next symbol */
 	      }
 	    return(lastc);
   case '$': if(
-            /* c=='_'&&okid(peekch())|| /* _id/_ID as id */
+            /* c=='_'&&okid(peekch())|| */ /* _id/_ID as id */
               isalpha(c))
               { int t;
                 kollect(okid);
@@ -951,7 +951,8 @@ void numeral()
 }
 
 void hexnumeral()   /* added 21.11.2013 */
-{ word nflag=1;
+{
+  // word nflag=1;
   dicq= dicp;
   *dicq++ = c, c=getch(); /* 0 */
   *dicq++ = c, c=getch(); /* x */
