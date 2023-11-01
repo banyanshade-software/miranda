@@ -1,3 +1,6 @@
+#ifndef _yy_defines_h_
+#define _yy_defines_h_
+
 #define VALUE 257
 #define EVAL 258
 #define WHERE 259
@@ -48,3 +51,5 @@
 #define INFIXNAME 304
 #define INFIXCNAME 305
 #define CMBASE 306
+
+#endif /* _yy_defines_h_ */

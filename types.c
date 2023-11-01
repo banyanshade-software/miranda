@@ -96,13 +96,13 @@ L:if(TYPERRS)
       SYNERR=1;
       return; }
   if(freeids!=NIL)redtfr(freeids);
-  /* printgraph("dependency analysis:",R); /* for debugging */
+  /* printgraph("dependency analysis:",R); */ /* for debugging */
   genshfns();
   if(fnts!=NIL)genbnft();
   R=msc(R);
-  /* printgraph("strong components:",R); /* for debugging */
+  /* printgraph("strong components:",R); */ /* for debugging */
   s=tsort(R);
-  /* printlist("topological sort:",s); /* for debugging */
+  /* printlist("topological sort:",s); */ /* for debugging */
   NT=R=NIL; /* must be invariant across the call */
   while(s!=NIL)infer_type(hd[s]),s=tl[s];
   checkfbs();
@@ -135,7 +135,7 @@ void comp_deps(n) /* adds to R an entry of the form cons(n,RHS) where n is an
    form, as it goes */
 word n;
 { word rhs=NIL,r;
-  /* printf("comp_deps(%s)\n",get_id(n)); /* DEBUG */
+  /* printf("comp_deps(%s)\n",get_id(n)); */ /* DEBUG */
   if(id_type(n)==type_t)
     { if(t_class(n)==algebraic_t)
         { r=t_info(n);
@@ -298,7 +298,7 @@ L:if(t_class(tn)!=synonym_t)return(t);
       if(tag[current_id]!=DATAPAIR)
         sayhere(id_who(tn),1);
       longjmp(env1,1); /* fatal error - give up */
-/*    t_class(tn)=algebraic_t;t_info(tn)=NIL;
+/*    t_class(tn)=algebraic_t;t_info(tn)=NIL; */
           /* to make sure we dont fall in here again! */
       return(t); }
   meta_pending=cons(tn,meta_pending);
@@ -467,7 +467,7 @@ word tabstrs;
      	 printf("abstype declaration error: \"%s\" has a type unrelated to \
 the abstraction\n",get_id(hd[sigids])),
 	       sayhere(getspecloc(hd[sigids]),1),
-	       TYPERRS++; /* suppressed June 89, see karen.m, secret.m */
+	       TYPERRS++; */ /* suppressed June 89, see karen.m, secret.m */
             rtypes=cons(rt,rtypes);
 	    sigids=tl[sigids]; }
        rtypes=reverse(rtypes);
@@ -484,7 +484,7 @@ word x;
   ATNAMES=shunt(hd[hd[x]],ATNAMES); */
   ATNAMES=hd[hd[x]];
   txchange(sigids,rtypes);  /* install representation types */
-  /* report_types("concrete signature:\n",sigids); /* DEBUG */
+  /* report_types("concrete signature:\n",sigids); */ /* DEBUG */
   for(x=sigids;x!=NIL;x=tl[x])
      { word t,oldte=TYPERRS;
        current_id=hd[x];
@@ -1251,7 +1251,7 @@ int clear_SUBST()
 { word i;
   fixshows();
   for(i=0;i<hashsize;i++)SUBST[i]=0;
-  /*printf("tvcount=%d\n",tvcount);  /* probe */
+  /*printf("tvcount=%d\n",tvcount);   probe */
   tvcount=1;
   return(0);  /* see defn of reset_SUBST */
 }
@@ -1446,7 +1446,7 @@ L:switch(tag[x])
 	     x=tl[x];
 	     goto L;
   case ID: return(isconstructor(x)?d:add1(x,d));
-  case LAMBDA: /* d=UNION(d,patdeps(hd[x])); 
+  case LAMBDA: /* d=UNION(d,patdeps(hd[x])); */
 	       /* should add this - see sahbug3.m */
 	       return(rembvars(UNION(d,deps(tl[x])),hd[x]));
   case LET: d=rembvars(UNION(d,deps(tl[x])),dlhs(hd[x]));
@@ -1564,8 +1564,8 @@ word x;
 	     x=tl[x]; fprintf(f,","); }
       out_pattern(f,hd[x]); fprintf(f,","); out_pattern(f,tl[x]); 
       fprintf(f,")"); } else
-  if(tag[x]==INT&&neg(x)||tag[x]==DOUBLE&&get_dbl(x)<0)
-    { fprintf(f,"("); out(f,x); fprintf(f,")"); } /* -ve numbers */
+  if(tag[x]==INT&&neg(x)||tag[x]==DOUBLE&&get_dbl(x)<0) { 
+       fprintf(f,"("); out(f,x); fprintf(f,")"); } /* -ve numbers */
   else
   out(f,x);  /* all other cases */
 }
@@ -1642,8 +1642,8 @@ word t;
   default: if(tag[t]==ID)printf("%s",get_id(t));else
 	   if(isvar_t(t))
 	   { word n=gettvar(t);
-	   /*if(1)printf("t%d",n-1); else /* experiment, suppressed */
-	   /*if(n<=26)putchar('a'+n-1); else /* experiment */
+	   /*if(1)printf("t%d",n-1); else */ /* experiment, suppressed */
+	   /*if(n<=26)putchar('a'+n-1); else */ /* experiment */
 	     if(n>0&&n<7)while(n--)putchar('*'); /* 6 stars max */
 	     else printf("%ld",n); }else
            if(tag[t]==STRCONS)     /* pname - see hack in privatise */

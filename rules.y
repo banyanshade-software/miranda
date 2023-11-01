@@ -144,9 +144,9 @@ word x;
             cons(ap(standardout,isstring_t(t)?x:ap(mkshow(0,0,t),x)),NIL));
 }
 
-int isstring(x)
-word x;
-{ return(x==NILS||tag[x]==CONS&&is_char(hd[x]));
+int isstring(word x)
+{
+     return(x==NILS || tag[x]==CONS && is_char(hd[x]));
 }
 
 word compose(x) /* used in compiling 'cases' */
@@ -238,11 +238,11 @@ word d,ps,hr;
 { word p,n=dlhs(d);
   for(p=ps;p!=NIL;p=tl[p])
   if(dlhs(hd[p])==n)
-     if(dtyp(d)==undef_t&&dval(hd[p])==UNDEF)
-       { dval(hd[p])=dval(d); return(ps); } else
-     if(dtyp(d)!=undef_t&&dtyp(hd[p])==undef_t)
-       { dtyp(hd[p])=dtyp(d); return(ps); }
-     else
+     if(dtyp(d)==undef_t&&dval(hd[p])==UNDEF) { 
+        dval(hd[p])=dval(d); return(ps);
+     } else if (dtyp(d)!=undef_t&&dtyp(hd[p])==undef_t) { 
+        dtyp(hd[p])=dtyp(d); return(ps); 
+     } else
        errs=hr,
        printf(
       "%ssyntax error: conflicting %s of nonterminal \"%s\"\n",
@@ -408,8 +408,7 @@ entity:  /* the entity to be parsed is either a definition script or an
             { int pid;/* launch a concurrent process to perform task */
               sighandler oldsig;
               oldsig=signal(SIGINT,SIG_IGN); /* ignore interrupts */
-              if(pid=fork())
-                { /* "parent" */
+              if ((pid=fork())) { /* "parent" */
                   if(pid==-1)perror("cannot create process");
                   else printf("process %d\n",pid);
                   fclose(fil);
@@ -428,7 +427,7 @@ entity:  /* the entity to be parsed is either a definition script or an
                    (fix due to Martin Guy) */
                 /* formerly used dup2, but not present in system V */
                 fclose(stdin);
-                /* setbuf(stdout,NIL); 
+                /* setbuf(stdout,NIL); */
 		/* not safe to change buffering of stream already in use */
 		/* freopen would have reset the buffering automatically */
                 lastexp = NIL;  /* what else should we set to NIL? */
@@ -1587,7 +1586,7 @@ term:
     count_factors
         = { word n=0,f=$1,rule=Void;
                          /* default value of a production is () */
-                         /* rule=mkgvar(sreds); /* formerly last symbol */
+                         /* rule=mkgvar(sreds); */ /* formerly last symbol */
             if(f!=NIL&&hd[f]==G_END)sreds++;
             if(ihlist)rule=ih_abstr(rule);
             while(n<sreds)rule=lambda(mkgvar(++n),rule);

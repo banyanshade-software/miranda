@@ -27,4 +27,4 @@ word sto_pn(word);
 word str_conv(char*);
 char *token(void);
 void unsetlmargin(void);
-word yylex(void);
+//word yylex(void);

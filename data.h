@@ -350,7 +350,7 @@ int yyparse();
 extern int yychar; /* defined in y.tab.c */
 
 
-/* #include "allexterns" /* check for type consistency */
+/* #include "allexterns" */  /* check for type consistency */
 
 extern FILE *s_out; /* reduce.c */
 extern word outfilq;

@@ -324,7 +324,7 @@ static word makeshow(word here, word type)
     extern word ND;
     was_poly=0;
     f=mkshow(0,0,type);
-    /* printob("showfn=",f); /* DEBUG */
+    /* printob("showfn=",f); */ /* DEBUG */
     if (here && was_poly) {
         extern char *current_script;
         printf("type error in definition of %s\n",get_id(current_id));
@@ -415,7 +415,7 @@ void genshfns(void) /* called after meta type check - create show functions for
             word t=id_type(hd[r]),k=id_val(hd[r]);
             while(tag[k]!=CONSTRUCTOR) k=tl[k];/* lawful and !'d constructors*/
             /* k now holds constructor(i,hd[r]) */
-            /* k=constructor(hd[k],datapair(get_id(tl[k]),0));
+            /* k=constructor(hd[k],datapair(get_id(tl[k]),0));*/
              /* this `freezes' the name of the constructor */
             /* incorrect, makes showfns immune to aliasing, should be
              done at mkshow time, not genshfn time - FIX LATER */
@@ -808,9 +808,9 @@ word fallible(word e) /* e is "fallible" rhs - if not sure, says yes */
 word k(i,n)
 int i,n;
 { if(i==1)return(n==1?I:n==2?K:ap2(B,K,k(1,n-1)));
-  if(i==2&&n==2)return(KI); /* redundant but saves space *//*
+  if(i==2&&n==2)return(KI); *//* redundant but saves space *//*
   return(ap(K,k(i-1,n-1)));
-} /* not currently used */
+} */ /* not currently used */
 
 #define arity_check if(t_arity(tf)!=arity)\
   printf("%ssyntax error: \
@@ -869,7 +869,7 @@ word block(word defs, word e, word keep) /* semantics of "where" - performs depe
 {
     word ids=NIL,deftoids=NIL,g=NIL,d;
     extern word SYNERR,detrop;
-    /* return(letrec(defs,e)); /* release one semantics was just this */
+    /* return(letrec(defs,e));*/ /* release one semantics was just this */
     if(SYNERR)return(NIL);  /* analysis falls over on empty patterns */
     for(d=defs;d!=NIL;d=tl[d])  /* first collect all ids defined in block */
     { word x = get_ids(dlhs(hd[d]));
@@ -889,7 +889,7 @@ word block(word defs, word e, word keep) /* semantics of "where" - performs depe
      where defs are all on which def immediately depends, plus self */
     g = tclos(g);  /* now g is list(cons(def,ultdefs)) */
     { /* check for unused definitions */
-        word x=intersection(deps(e),ids),y=NIL,*g1= &g;
+        word x=intersection(deps(e),ids),y=NIL; //,*g1= &g;
         for(;x!=NIL;x=tl[x])
         { word d=invgetrel(deftoids,hd[x]);
             if(!member(y,d))y=UNION(y,getrel(g,d)); }
