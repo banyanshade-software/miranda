@@ -884,7 +884,7 @@ static word _reduce(word e)
 		UPLEFT;
 		fprintf(stderr,"\nprogram error: lhs of definition doesn't match rhs");
 		/*fprintf(stderr," OF ");
-             out_formal1(stderr,hd[lastarg]); /* omit - names may have been aliased */
+             out_formal1(stderr,hd[lastarg]);*/ /* omit - names may have been aliased */
 		putc('\n',stderr);
 		out_here(stderr,tl[lastarg],1);
 		outstats();
@@ -1209,24 +1209,27 @@ static word _reduce(word e)
 		arg3=ap(G_COUNT,lastarg);
 		hold=ap(arg2,arg3);
 		hold=reduce(hold);          /* ### */
-		if(fails(hold) /* ||(tl[hold]=reduce(tl[hold]))!=NIL  /* ### */
-		)            /* suppress to make parsers lazy by default 13/12/90 */
-		{ fprintf(stderr,"\nPARSE OF %sFAILS WITH UNEXPECTED ",
-				getstring(arg1,0));
-		arg3=reduce(tl[g_residue(arg3)]);
-		if(arg3==NIL)
-			fprintf(stderr,"END OF INPUT\n"),
-			outstats(),
+		if(fails(hold)) { /* ||(tl[hold]=reduce(tl[hold]))!=NIL */ /* ### */
+			/* suppress to make parsers lazy by default 13/12/90 */
+			fprintf(stderr,"\nPARSE OF %sFAILS WITH UNEXPECTED ",
+					getstring(arg1,0));
+			arg3=reduce(tl[g_residue(arg3)]);
+			if(arg3==NIL)
+				fprintf(stderr,"END OF INPUT\n"),
+				outstats(),
+				exit(1);
+			hold=ap(FST,hd[arg3]);
+			hold=reduce(hold);
+			fprintf(stderr,"TOKEN \"");
+			if(hold==OFFSIDE) fprintf(stderr,"offside"); /* not now possible */
+			{
+				char *p=getstring(hold,0);
+				while(*p)fprintf(stderr,"%s",charname(*p++));
+			}
+			fprintf(stderr,"\"\n");
+			outstats();
 			exit(1);
-		hold=ap(FST,hd[arg3]);
-		hold=reduce(hold);
-		fprintf(stderr,"TOKEN \"");
-		if(hold==OFFSIDE)fprintf(stderr,"offside"); /* not now possible */
-		{ char *p=getstring(hold,0);
-		while(*p)fprintf(stderr,"%s",charname(*p++)); }
-		fprintf(stderr,"\"\n");
-		outstats();
-		exit(1); }
+		}
 		hd[e]=I,e=tl[e]=hd[hold];
 		goto NEXTREDEX;
 		/* NOTE the atom OFFSIDE differs from every string and is used as a
@@ -1237,8 +1240,9 @@ static word _reduce(word e)
 		/* G_COUNT is an identity operation on lists - its purpose is to mark
              last token examined, for syntax error location purposes */
 		upleft;
-		if((lastarg=reduce(lastarg))==NIL)   /* ### */
-		{ hd[e]=I; e=tl[e]=NIL; goto DONE; }
+		if((lastarg=reduce(lastarg))==NIL) {  /* ### */
+			hd[e]=I; e=tl[e]=NIL; goto DONE;
+		}
 		setcell(CONS,hd[lastarg],ap(G_COUNT,tl[lastarg]));
 		goto DONE;
 
@@ -1380,10 +1384,12 @@ static word _reduce(word e)
 		{ hd[e]=I; e=tl[e]=NIL; goto DONE; }
 		hold=hd[tl[arg1]]; /* the char */
 		setcell(CONS,strcons(hd[arg1],hold),ap(LEX_COUNT,arg1));
-		if(hold=='\n')hd[arg1]=(hd[arg1]>>8)+1<<8;
-		else { word col = hd[arg1]&255;
-		col = hold=='\t'?(col/8+1)*8:col+1;
-		hd[arg1] = hd[arg1]&(~255)|col; }
+		if (hold=='\n') hd[arg1]=(hd[arg1]>>8)+1<<8;
+		else {
+			word col = hd[arg1]&255;
+			col = hold=='\t'?(col/8+1)*8:col+1;
+			hd[arg1] = hd[arg1]&(~255)|col;
+		}
 		tl[arg1]=tl[tl[arg1]];
 		goto DONE;
 
@@ -1520,12 +1526,12 @@ static word _reduce(word e)
 		hd[e]=I; e=tl[e]=hold;
 		goto DONE;
 
-		/*  case NUMBER:   /* constructor of arity 1
-             UPLEFT;  /* cannot occur free
+		/*  case NUMBER: */  /* constructor of arity 1
+             UPLEFT;  */ /* cannot occur free
              goto DONE; */ /* UNUSED*/
 
 		/*  case CONSTRUCTOR:
-             for(;;){upleft; }  /* reapply to args until DONE */
+             for(;;){upleft; } */ /* reapply to args until DONE */
 
 	default: /* non combinator */
 		cycles--; /* oops! */
@@ -1539,7 +1545,7 @@ static word _reduce(word e)
 		/*if(e==UNDEF||e==FREE)
                      fprintf(stderr,
                      "\nimpossible event in reduce - undefined pname\n"),
-                     exit(1);
+                     exit(1);*/
                      /* redundant test - remove when sure */
 		goto NEXTREDEX;
 		case DATAPAIR: /* datapair(oldn,0)(fileinfo(filename,0))=>BOTTOM */
@@ -1555,7 +1561,7 @@ static word _reduce(word e)
 		{ fprintf(stderr,"\nUNDEFINED NAME - %s\n",get_id(e));
 		outstats();
 		exit(1); }
-		/* setcell(AP,I,id_val(e));  /* overwrites error-info */
+		/* setcell(AP,I,id_val(e)); */ /* overwrites error-info */
 		e=id_val(e);  /* could be eager in value */
 		goto NEXTREDEX;
 		default: fprintf(stderr,"\nimpossible tag (%d) in reduce\n",tag[e]);
@@ -1585,7 +1591,7 @@ static word _reduce(word e)
 		case ATOM: /* for(;;){upleft; } */
 			/* as above if there are constructors with tag ATOM
                      and +ve arity.  Since there are none we could test
-                     for missing combinators at this point. Thus
+                     for missing combinators at this point. Thus*/
                      /*if(!abnormal(s))
                      fprintf(stderr,"\nreduce: unknown combinator "),
                      out(stderr,e), putc('\n',stderr),exit(1); */
@@ -1608,7 +1614,7 @@ static word _reduce(word e)
 		return(e);   /* end of reduction */
 		/* outchar(hd[e]);
          e=tl[e];
-         goto NEXTREDEX;
+         goto NEXTREDEX;*/
          /* above shows how to incorporate printing into m/c */
 	}
 
@@ -1631,58 +1637,62 @@ static word _reduce(word e)
 	/* we are through reducing args of strict operator */
 	/* we can merge the following switch with the main one, if desired,
      - in this case use the alternate definitions of READY and RESTORE
-     and replace the following switch by
+     and replace the following switch by*/
      /* e=READY(e); goto OPDECODE; */
 
 #ifdef DEBUG
 	if(debug&02){ printf("ready("); out(stdout,e); printf(")\n"); }
 #endif
-	switch(e) /* "ready" switch */
-	{
-	/*  case READY(MONOP):/* paradigm for execution of strict monadic operator
+	switch(e) { /* "ready" switch */
+
+	/*  case READY(MONOP): */ /* paradigm for execution of strict monadic operator
              GETARG(arg1);
              hd[e]=I; e=tl[e]=do_monop(arg1);
              goto NEXTREDEX; */
 
 	case READY(I):      /*  I x => x */
-            		UPLEFT;
-	e=lastarg;
-	goto NEXTREDEX;
+		UPLEFT;
+		e=lastarg;
+		goto NEXTREDEX;
 
 	case READY(SEQ):        /* SEQ a b => b, a~=BOTTOM  */
-            		UPLEFT;
-	upleft;
-	hd[e]=I;e=lastarg;
-	goto NEXTREDEX;
+        UPLEFT;
+	 	 upleft;
+	 	 hd[e]=I;e=lastarg;
+	 	 goto NEXTREDEX;
 
 	case READY(FORCE):      /*  FORCE x => x, total x */
-            		UPLEFT;
-	force(lastarg);
-	hd[e]=I;e=lastarg;
-	goto NEXTREDEX;
+         UPLEFT;
+		force(lastarg);
+		hd[e]=I;e=lastarg;
+		goto NEXTREDEX;
 
 	case READY(HD):
-            		UPLEFT;
-	if(lastarg==NIL)
-	{ fprintf(stderr,"\nATTEMPT TO TAKE hd OF []\n");
-	outstats(); exit(1); }
-	hd[e]=I; e=tl[e]=hd[lastarg];
-	goto NEXTREDEX;
+     	UPLEFT;
+		if(lastarg==NIL) {
+			fprintf(stderr,"\nATTEMPT TO TAKE hd OF []\n");
+			outstats();
+			exit(1);
+		}
+		hd[e]=I; e=tl[e]=hd[lastarg];
+		goto NEXTREDEX;
 
 	case READY(TL):
-            		UPLEFT;
-	if(lastarg==NIL)
-	{ fprintf(stderr,"\nATTEMPT TO TAKE tl OF []\n");
-	outstats(); exit(1); }
-	hd[e]=I; e=tl[e]=tl[lastarg];
-	goto NEXTREDEX;
+        UPLEFT;
+		if(lastarg==NIL) {
+			fprintf(stderr,"\nATTEMPT TO TAKE tl OF []\n");
+			outstats();
+			exit(1);
+		}
+		hd[e]=I; e=tl[e]=tl[lastarg];
+		goto NEXTREDEX;
 
 	case READY(BODY):
-            		/* BODY(k x1 .. xn) => k x1 ... x(n-1)
-             for arbitrary constructor k */
-            		UPLEFT;
-	hd[e]=I; e=tl[e]=hd[lastarg];
-	goto NEXTREDEX;
+       	/* BODY(k x1 .. xn) => k x1 ... x(n-1)
+        for arbitrary constructor k */
+        UPLEFT;
+		hd[e]=I; e=tl[e]=hd[lastarg];
+		goto NEXTREDEX;
 
 	case READY(LAST):   /* LAST(k x1 .. xn) => xn
                              for arbitrary constructor k */
@@ -1691,14 +1701,17 @@ static word _reduce(word e)
 	goto NEXTREDEX;
 
 	case READY(TAKE):
-            		GETARG(arg1);
-	upleft;
-	if(tag[arg1]!=INT)int_error("take");
-	{ long long n=get_int(arg1);
-	if(n<=0||(lastarg=reduce(lastarg))==NIL)  /* ### */
-	{ simpl(NIL); goto DONE; }
-	setcell(CONS,hd[lastarg],ap2(TAKE,sto_int(n-1),tl[lastarg])); }
-	goto DONE;
+        GETARG(arg1);
+		upleft;
+		if(tag[arg1]!=INT)int_error("take");
+		{
+			long long n=get_int(arg1);
+			if(n<=0||(lastarg=reduce(lastarg))==NIL) {
+				simpl(NIL); goto DONE;
+			}
+			setcell(CONS,hd[lastarg],ap2(TAKE,sto_int(n-1),tl[lastarg]));
+		}
+		goto DONE;
 
 	case READY(FILEMODE): /* FILEMODE string => string'
                                (see filemode in manual) */
@@ -1733,7 +1746,7 @@ static word _reduce(word e)
                                 (see man (2) getenv)    */
             		UPLEFT;
 	{ char *a = getstring(lastarg,"getenv");
-	unsigned char *p = getenv(a);
+	unsigned char *p = (unsigned char *) getenv(a);
 	hold = NIL;
 	if(p){ word i;
 	unsigned char *q=p, *r=p;
@@ -1749,7 +1762,7 @@ static word _reduce(word e)
 	*q='\0';
 	}
 	/* convert p to list */
-	i = strlen(p);
+	i = strlen((char *)p);
 	while(i--)hold=cons(p[i],hold);
 	}
 	}
@@ -1779,7 +1792,7 @@ static word _reduce(word e)
 				setcell(CONS,ap(READ,fp),cons(ap(READ,fp_a),ap(WAIT,pid)));
 	}
 	else { /* child (writer) */
-		word in;
+		//word in;
 		static char *shell="/bin/sh";
 		dup2(fd[1],1); /* so pipe replaces stdout */
 		dup2(fd_a[1],2); /* 2nd pipe replaces stderr */
@@ -1843,7 +1856,7 @@ static word _reduce(word e)
 		char *fil;
 		lastarg = (word)fopen(fil=getstring(lastarg,"read"),"r");
 		if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
-			/* { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+			/* { hd[e]=I; e=tl[e]=NIL; goto DONE; }*/
              /* could just return empty contents */
 		{ fprintf(stderr,"\nread, cannot open: \"%s\"\n",fil);
 		outstats(); exit(1); }
@@ -1859,7 +1872,7 @@ static word _reduce(word e)
 		char *fil;
 		lastarg = (word)fopen(fil=getstring(lastarg,"readb"),"r");
 		if((FILE *)lastarg==NULL)  {/* cannot open file for reading  */
-			/* { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+			/* { hd[e]=I; e=tl[e]=NIL; goto DONE; }*/
                  /* could just return empty contents */
 			fprintf(stderr,"\nreadb, cannot open: \"%s\"\n",fil);
 			outstats(); exit(1);
@@ -1893,9 +1906,9 @@ static word _reduce(word e)
 	} else {
 		e=tl[e]=KI; goto L_KI;
 	}
-	/* goto OPDECODE;  /* to speed up we have set extra labels */
+	/* goto OPDECODE;*/  /* to speed up we have set extra labels */
 
-	/* alternative rules     /*     COND True x => K x
+	/* alternative rules     *//*     COND True x => K x
              COND False x => I    */
 
 	case READY(APPEND):    /* APPEND NIL y => y
@@ -1920,7 +1933,7 @@ static word _reduce(word e)
 	if(lastarg==True){ hd[e]=K; DOWNLEFT; goto L_K; }
 	else { e=I; goto L_I; }
 
-	/* alternative rules     ??   /*    AND True y => y
+	/* alternative rules     ??  */ /*    AND True y => y
              AND False y => False
              OR True y => True
              OR False y => y    */
@@ -2053,19 +2066,19 @@ static word _reduce(word e)
 	setdbl(e,sqrt(fa));
 	goto DONE;
 
-	/*  case READY(DIOP):/* paradigm for execution of strict diadic operator
-             RESTORE(e);  /* do not write modified form of operator back into graph
+	/*  case READY(DIOP):  paradigm for execution of strict diadic operator
+             RESTORE(e);    do not write modified form of operator back into graph
              GETARG(arg1);
              GETARG(arg2);
              hd[e]=I; e=tl[e]=diop(arg1,arg2);
              goto NEXTREDEX;  */
 
-	/*  case READY(EQUAL): /* UNUSED
+	/*  case READY(EQUAL):   UNUSED
              RESTORE(e);
              GETARG(arg1);
              GETARG(arg2);
              if(isap(arg1)&&hd[arg1]!=NUMBER&&isap(arg2)&&hd[arg2]!=NUMBER)
-             { /* recurse on components
+             {   recurse on components
              hd[e]=ap2(EQUAL,tl[arg1],tl[arg2]);
              hd[e]=ap3(EQUAL,hd[arg1],hd[arg2],hd[e]);
              tl[e]=False;
@@ -2166,7 +2179,7 @@ static word _reduce(word e)
              { extern word b_rem;
              int d = bigdiv(arg1,lastarg);
              if(bigzero(b_rem)){ simpl(d); goto DONE; }
-             } /* makes a/b integer if a, b integers dividing exactly */
+             } */ /* makes a/b integer if a, b integers dividing exactly */
 	fa=force_dbl(arg1);
 	fb=force_dbl(lastarg);
 	if(fb==0.0)div_error();
@@ -2351,7 +2364,7 @@ static word g_residue(word toks2)  /* remainder of token stream from last token 
 		return(cons(NIL,NIL));
 	return(cons(NIL,toks2)); /*no tokens examined, whole grammar is `error'*/
 	/* fprintf(stderr,"\nimpossible event in g_residue\n"),
-         exit(1); /* grammar fn must have examined >=1 tokens */ }
+         exit(1); */ /* grammar fn must have examined >=1 tokens */ }
 	while (tag[tl[toks2]]==CONS) toks1=cons(hd[toks2],toks1),toks2=tl[toks2];
 	if (tl[toks2]==NIL||tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL) {
 		toks1=cons(hd[toks2],toks1);
@@ -2486,7 +2499,7 @@ void outstats(void)
 #endif
 	putchar('\n');
 #ifdef DEBUG
-	printf("||maxr_depth=%d\n",maxrdepth);
+	printf("||maxr_depth=%ld\n",maxrdepth);
 #endif
 }
 
