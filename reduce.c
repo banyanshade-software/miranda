@@ -363,7 +363,7 @@ static word _reduce(word e);
 static word reduce(word e)
 {
     if (_dump_reduce) {
-        printf("reducing :\n");
+        printf("reducing %lx:\n", e);
         out(stdout, e);
         printf("\n");    
     }
@@ -373,7 +373,7 @@ static word reduce(word e)
     }
     e = _reduce(e);
     if (_dump_reduce) {
-        printf("reduced to :\n");
+        printf("reduced to : %lx\n", e);
         out(stdout, e);
         printf("\n");    
     }
@@ -383,13 +383,13 @@ static word reduce(word e)
 static word _reduce(word e)
 {
 	word s=BACKSTOP,hold,arg1,arg2,arg3;
+NEXTREDEX:
 #ifdef DEBUG
 	if(++rdepth>maxrdepth) maxrdepth=rdepth;
 	if(debug&02)
-		printf("reducing: "),out(stdout,e),putchar('\n');
+		printf("reducing %lx: ",e),out(stdout,e),putchar('\n');
 #endif
 
-	NEXTREDEX:
 	while(!abnormal(e)&&tag[e]==AP) DOWNLEFT;
 #ifdef HISTO
 	histo(e);

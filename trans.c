@@ -169,11 +169,11 @@ word codegen(word x)
     if (_dump_compile) {
         printf("++++ codegen %lx :\n", x);
         out(stdout,x);
-        printf("\n---- compile\n");
+        printf("\n");
     }
     word r = _codegen(x);
     if (_dump_compile) {
-        printf("---- compiled code:\n");
+        printf("---- compiled code %lx:\n", r);
         out(stdout,r);
         printf("\n");
     }

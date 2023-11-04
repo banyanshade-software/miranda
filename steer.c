@@ -2228,6 +2228,7 @@ static void makedump(void)
 	FILE *f;
 	(void)strcpy(obf,current_script);
 	(void)strcpy(obf+strlen(obf)-1,obsuffix);
+	printf("--- makedump %s\n", obf);
 	f=fopen(obf,"w");
 	if(!f) {
 		printf("WARNING: CANNOT WRITE TO %s\n",obf);
