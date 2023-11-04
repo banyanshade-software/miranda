@@ -3,3 +3,5 @@
 /mira
 /fdate
 miralib/menudriver
+*.dSYM
+*.swp
