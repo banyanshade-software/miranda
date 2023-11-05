@@ -1,0 +1,14 @@
+with min-caml.top :
+
+
+let inchan = open_in "test/gcd.ml";;
+let l = Lexing.from_channel inchan;;
+let p = Parser.exp Lexer.token l;;
+let t = Typing.f p;;
+let k = KNormal.f t;;
+let a = Alpha.f k;;
+let c = Closure.f a;;
+let v = Virtual.f c;;
+let s = Simm.f v;;
+let r = RegAlloc.f s;;
+let e = Emit.f stdout r;;
