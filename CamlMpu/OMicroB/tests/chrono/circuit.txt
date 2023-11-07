@@ -1,0 +1,20 @@
+###########################################################################
+##                                                                       ##
+##                                OCaPIC                                 ##
+##                                                                       ##
+##                             Benoit Vaugon                             ##
+##                                                                       ##
+##    This file is distributed under the terms of the CeCILL license.    ##
+##    See file ../../LICENSE-en.                                         ##
+##                                                                       ##
+###########################################################################
+
+window width=500 height=460 title="Chronometer"
+
+lcd16x2 x=30 y=300 e=PIN12 rs=PIN11 rw=PIN0 d4=PIN2 d5=PIN3 d6=PIN4 d7=PIN5
+
+button x=85 y=40 width=60 color=black label="START" pin=PIN6
+button x=405 y=55 width=20 height=20 label="+" pin=PIN7
+button x=405 y=25 width=20 height=20 label="-" pin=PIN8
+
+led x=145 y=40 pin=PIN9 color=green
