@@ -1,0 +1,32 @@
+
+*.annot
+
+# Ocaml
+*.cmo
+*.cma
+*.cmi
+
+
+*.a
+*.o
+
+*.cmx
+*.cmxs
+*.cmxa
+
+*.byte
+*.native
+_build
+
+petitghc
+
+# petitghc
+
+*.s
+*.out0
+*.out1
+
+# latex
+*.aux
+*.log
+*.pdf
