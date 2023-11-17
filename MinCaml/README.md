@@ -9,7 +9,7 @@
 * https://github.com/cookie-s/min-caml and https://github.com/touyou/min-caml
  several addition (option to dump intermediate states, dfa)
 
-* https://github.com/lsylvestre/mini-ML/tree/main
+* https://github.com/lsylvestre/mini-ML
   though it does not reference min-caml, it is a minmal caml too, but with
   types and a VM
 
