@@ -1,0 +1,25 @@
+
+# Ocaml
+*.cmo
+*.cma
+*.cmi
+
+*.a
+*.o
+
+._d/
+._bcdi/
+
+*.cmx
+*.cmxs
+*.cmxa
+
+*.byte
+*.native
+_build
+
+
+*.s
+*.out0
+*.out1
+
