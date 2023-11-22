@@ -1,0 +1,19 @@
+# normal build output
+_build
+haskalah
+haskalah-test
+parser_gen_log
+src/computed_actions_gotos.ml
+*.native
+*.byte
+*.d.native
+*.p.byte
+
+# editor temporary files
+\#*\#
+*~
+.*.swp
+*.tmp
+*.bak
+*.orig
+*.nfs*
