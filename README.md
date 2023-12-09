@@ -1,4 +1,6 @@
-# Functional languages compilation
+# Tiny Functional Languages Zoo
+
+## Functional languages compilation
 
 this repo is a collection of implementation
 of small/tiny  functional programming languages.
